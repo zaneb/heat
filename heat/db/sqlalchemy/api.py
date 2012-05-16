@@ -197,9 +197,9 @@ def event_create(context, values):
     return event_ref
 
 
-def watch_rule_get(context, watch_rule_id):
+def watch_rule_get(context, watch_rule_name):
     result = model_query(context, models.WatchRule).\
-                        filter_by(id=watch_rule_id).first()
+                        filter_by(name=watch_rule_name).first()
     return result
 
 
@@ -223,18 +223,18 @@ def watch_rule_delete(context, watch_name):
     session.flush()
 
 
-def watch_data_create(context, watch_name, values):
+def watch_data_create(context, values):
     obj_ref = models.WatchData()
     obj_ref.update(values)
     obj_ref.save()
     return obj_ref
 
 
-def watch_data_get_all(context, watch_name, max_enties):
+def watch_data_get_all(context, watch_id, max_enties):
     # get dataset ordered by creation_at (most recient first)
     # at most 'max_enties'
     results = model_query(context, models.WatchData).\
-                          filter_by(watch_name=watch_name).all()
+                          filter_by(watch_rule_id=watch_id).all()
     return results
 
 

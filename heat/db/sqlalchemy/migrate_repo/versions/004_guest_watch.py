@@ -35,6 +35,8 @@ def upgrade(migrate_engine):
         Column('created_at', DateTime(timezone=False)),
         Column('updated_at', DateTime(timezone=False)),
         Column('data', Text()),
+        Column('watch_rule_id', Integer, ForeignKey("watch_rule.id"),
+               nullable=False),
     )
 
     try:

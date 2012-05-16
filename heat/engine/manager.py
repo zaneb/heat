@@ -355,49 +355,56 @@ class EngineManager(manager.Manager):
         else:
             return metric + rolling
 
-    def post_new_watch_data(self, context, watch_name, data):
+    def create_watch_data(self, context, watch_name, stats_data):
         '''
         This could be used by CloudWatch and WaitConditions
         and treat HA service events like any other CloudWatch.
         '''
 
-        # TODO(asalkeld) prune old entries so they don't accumulate forever.
-        db_api.watch_data_create(context, watch_name, data)
-
         wr = db_api.watch_rule_get(context, watch_name)
+        watch_data = {
+            'data': stats_data,
+            'watch_rule_id': wr.id
+        }
+        wd = db_api.watch_data_create(context, watch_data)
 
         # get dataset ordered by creation_at
         # - most recient first
         # - at most 'periods' rows
-        periods = int(wr['EvaluationPeriods'])
-        wds = db_api.watch_data_get_all(context, watch_name, periods)
+        periods = int(wr.rule['EvaluationPeriods'])
+        wds = db_api.watch_data_get_all(context, wr.id, periods)
 
-        stat = wr['Statistic']
+        stat = wr.rule['Statistic']
         data = 0
         if stat == 'SampleCount':
             data = len(wds)
         else:
             for e in wds:
-                metric = int(e[wr['MetricName']])
-                data = self.do_data_calc(rule, data, metric)
+                metric = int(e.data[wr.rule['MetricName']])
+                data = self.do_data_calc(wr.rule, data, metric)
 
             if stat == 'Average':
                 data = data / period
 
-        alarming = self.do_data_cmp(rule, data,
-                                    int(wr['Threshold']))
+        alarming = self.do_data_cmp(wr.rule, data,
+                                    int(wr.rule['Threshold']))
         if alarming and wr.state != 'ALARM':
             wr.state = 'ALARM'
             wr.save()
-            s = db_api.stack_get(None, wr.stack_name)
-            if s:
-                ps = parser.Stack(s.name,
-                                  s.raw_template.parsed_template.template,
-                                  s.id,
-                                  params)
-                for a in wr['AlarmActions']:
-                    ps.resources[a].alarm()
+            logger.info('ALARM> stack:%s, watch_name:%s',
+                        wr.stack_name, wr.name)
+            #s = db_api.stack_get(None, wr.stack_name)
+            #if s:
+            #    ps = parser.Stack(s.name,
+            #                      s.raw_template.parsed_template.template,
+            #                      s.id,
+            #                      params)
+            #    for a in wr.rule['AlarmActions']:
+            #        ps.resources[a].alarm()
 
         elif not alarming and wr.state == 'ALARM':
             wr.state = 'NORMAL'
             wr.save()
+            logger.info('NORMAL> stack:%s, watch_name:%s',
+                        wr.stack_name, wr.name)
+        return [None, wr.state]
