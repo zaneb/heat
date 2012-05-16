@@ -131,6 +131,10 @@ def watch_rule_get(context, watch_rule_name):
     return IMPL.watch_rule_get(context, watch_rule_name)
 
 
+def watch_rule_get_all(context):
+    return IMPL.watch_rule_get_all(context)
+
+
 def watch_rule_create(context, values):
     return IMPL.watch_rule_create(context, values)
 

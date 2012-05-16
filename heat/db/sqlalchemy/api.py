@@ -203,6 +203,11 @@ def watch_rule_get(context, watch_rule_name):
     return result
 
 
+def watch_rule_get_all(context):
+    results = model_query(context, models.WatchRule).all()
+    return results
+
+
 def watch_rule_create(context, values):
     obj_ref = models.WatchRule()
     obj_ref.update(values)
