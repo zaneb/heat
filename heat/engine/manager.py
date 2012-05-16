@@ -385,7 +385,7 @@ class EngineManager(manager.Manager):
                 data = data / period
 
         alarming = self.do_data_cmp(rule, data,
-                                    int(wr['Threshold'])))
+                                    int(wr['Threshold']))
         if alarming and wr.state != 'ALARM':
             wr.state = 'ALARM'
             wr.save()

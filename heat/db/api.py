@@ -148,5 +148,5 @@ def watch_data_get_all(context, watch_name, max_enties):
     # at most 'max_enties'
     return IMPL.watch_data_get_all(context, watch_name, max_enties)
 
-def watch_data_delete(None, watch_name):
+def watch_data_delete(context, watch_name):
     return IMPL.watch_data_delete(context, watch_name)

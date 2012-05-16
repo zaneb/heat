@@ -6,8 +6,8 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    guest_watch = Table(
-        'guest_watch', meta,
+    watch_rule = Table(
+        'watch_rule', meta,
         Column('id', Integer, primary_key=True),
         Column('created_at', DateTime(timezone=False)),
         Column('updated_at', DateTime(timezone=False)),
@@ -24,13 +24,13 @@ def upgrade(migrate_engine):
     )
 
     try:
-        guest_watch.create()
+        watch_rule.create()
     except Exception:
         meta.drop_all(tables=tables)
         raise
 
-    guest_data = Table(
-        'guest_data', meta,
+    watch_data = Table(
+        'watch_data', meta,
         Column('id', Integer, primary_key=True),
         Column('created_at', DateTime(timezone=False)),
         Column('updated_at', DateTime(timezone=False)),
@@ -38,7 +38,7 @@ def upgrade(migrate_engine):
     )
 
     try:
-        guest_data.create()
+        watch_data.create()
     except Exception:
         meta.drop_all(tables=tables)
         raise
@@ -48,7 +48,7 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    guest_watch = Table('guest_watch', meta, autoload=True)
-    guest_watch.drop()
-    guest_data = Table('guest_data', meta, autoload=True)
-    guest_data.drop()
+    watch_rule = Table('watch_rule', meta, autoload=True)
+    watch_rule.drop()
+    watch_data = Table('watch_data', meta, autoload=True)
+    watch_data.drop()

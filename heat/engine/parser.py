@@ -25,6 +25,7 @@ from heat.engine import volume
 from heat.engine import eip
 from heat.engine import security_group
 from heat.engine import wait_condition
+from heat.engine import cloud_watch
 
 from heat.db import api as db_api
 

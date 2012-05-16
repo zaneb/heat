@@ -56,7 +56,7 @@ class CloudWatchAlarm(Resource):
         for r in self.required_props:
             if not r in self.t['Properties']:
                     return {'Error': \
-                    '%s is a required Property of CloudWatch' % {r}
+                    '%s is a required Property of CloudWatch' % {r}}
         for p in self.t['Properties']:
             if p in self.validation:
                 if not self.t['Properties'][p] in self.validation[p]:
@@ -80,7 +80,7 @@ class CloudWatchAlarm(Resource):
             'stack_name': self.stack.name
         }
 
-        wr = db_api.watch_rule_create(wr_values)
+        wr = db_api.watch_rule_create(None, wr_values)
         self.instance_id = wr.id
 
         self.state_set(self.CREATE_COMPLETE)

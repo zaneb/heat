@@ -195,3 +195,60 @@ def event_create(context, values):
     event_ref.update(values)
     event_ref.save()
     return event_ref
+
+
+def watch_rule_get(context, watch_rule_id):
+    result = model_query(context, models.WatchRule).\
+                        filter_by(id=watch_rule_id).first()
+    return result
+
+
+def watch_rule_create(context, values):
+    obj_ref = models.WatchRule()
+    obj_ref.update(values)
+    obj_ref.save()
+    return obj_ref
+
+
+def watch_rule_delete(context, watch_name):
+    wr = model_query(context, models.WatchRule).\
+                        filter_by(name=watch_name).first()
+
+    if not wr:
+        raise Exception('Attempt to delete a watch_rule with name: %s %s' % \
+                        (watch_name, 'that does not exist'))
+
+    session = Session.object_session(wr)
+    session.delete(wr)
+    session.flush()
+
+
+def watch_data_create(context, watch_name, values):
+    obj_ref = models.WatchData()
+    obj_ref.update(values)
+    obj_ref.save()
+    return obj_ref
+
+
+def watch_data_get_all(context, watch_name, max_enties):
+    # get dataset ordered by creation_at (most recient first)
+    # at most 'max_enties'
+    results = model_query(context, models.WatchData).\
+                          filter_by(watch_name=watch_name).all()
+    return results
+
+
+def watch_data_delete(context, watch_name):
+    ds = model_query(context, models.WatchRule).\
+                     filter_by(name=watch_name).all()
+
+    if not ds:
+        raise Exception('Attempt to delete watch_data with name: %s %s' % \
+                        (watch_name, 'that does not exist'))
+
+    session = Session.object_session(ds)
+    for d in ds:
+        session.delete(d)
+    session.flush()
+
+
