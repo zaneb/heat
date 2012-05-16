@@ -125,3 +125,28 @@ def event_get_all_by_stack(context, stack_id):
 
 def event_create(context, values):
     return IMPL.event_create(context, values)
+
+
+def watch_rule_get(context, watch_rule_id):
+    return IMPL.watch_rule_get(context, watch_rule_id)
+
+
+def watch_rule_create(context, values):
+    return IMPL.watch_rule_create(context, values)
+
+
+def watch_rule_delete(context, watch_rule_name):
+    return IMPL.watch_rule_delete(context, watch_rule_name)
+
+
+def watch_data_create(context, watch_name, values):
+    return IMPL.watch_data_create(context, watch_name, values)
+
+
+def watch_data_get_all(context, watch_name, max_enties):
+    # get dataset ordered by creation_at (most recient first)
+    # at most 'max_enties'
+    return IMPL.watch_data_get_all(context, watch_name, max_enties)
+
+def watch_data_delete(None, watch_name):
+    return IMPL.watch_data_delete(context, watch_name)

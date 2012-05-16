@@ -324,3 +324,80 @@ class EngineManager(manager.Manager):
         pt.template = t
         pt.save()
         return [None, metadata]
+
+
+
+
+    def do_data_cmp(self, rule, data, threshold):
+        op = rule['ComparisonOperator']
+        if op == 'GreaterThanThreshold':
+            return data > threshold
+        elif op == 'GreaterThanOrEqualToThreshold':
+            return data >= threshold
+        elif op == 'LessThanThreshold':
+            return data < threshold
+        elif op == 'LessThanOrEqualToThreshold':
+            return data <= threshold
+
+    def do_data_calc(self, rule, rolling, metric):
+
+        stat = rule['Statistic']
+        if stat == 'Maximum':
+            if metric > rolling:
+                return metric
+            else:
+                return rolling
+        elif stat == 'Minimum':
+            if metric < rolling:
+                return metric
+            else:
+                return rolling
+        else:
+            return metric + rolling
+
+    def post_new_watch_data(self, context, watch_name, data):
+        '''
+        This could be used by CloudWatch and WaitConditions
+        and treat HA service events like any other CloudWatch.
+        '''
+
+        # TODO(asalkeld) prune old entries so they don't accumulate forever.
+        db_api.watch_data_create(context, watch_name, data)
+
+        wr = db_api.watch_rule_get(context, watch_name)
+
+        # get dataset ordered by creation_at
+        # - most recient first
+        # - at most 'periods' rows
+        periods = int(wr['EvaluationPeriods'])
+        wds = db_api.watch_data_get_all(context, watch_name, periods)
+
+        stat = wr['Statistic']
+        data = 0
+        if stat == 'SampleCount':
+            data = len(wds)
+        else:
+            for e in wds:
+                metric = int(e[wr['MetricName']])
+                data = self.do_data_calc(rule, data, metric)
+
+            if stat == 'Average':
+                data = data / period
+
+        alarming = self.do_data_cmp(rule, data,
+                                    int(wr['Threshold'])))
+        if alarming and wr.state != 'ALARM':
+            wr.state = 'ALARM'
+            wr.save()
+            s = db_api.stack_get(None, wr.stack_name)
+            if s:
+                ps = parser.Stack(s.name,
+                                  s.raw_template.parsed_template.template,
+                                  s.id,
+                                  params)
+                for a in wr['AlarmActions']:
+                    ps.resources[a].alarm()
+
+        elif not alarming and wr.state == 'ALARM':
+            wr.state = 'NORMAL'
+            wr.save()

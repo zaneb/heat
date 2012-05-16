@@ -98,6 +98,9 @@ class Stack(object):
             elif type == 'AWS::CloudFormation::WaitCondition':
                 self.resources[r] = wait_condition.WaitCondition(r,
                                                 self.t['Resources'][r], self)
+            elif type == 'AWS::CloudWatch::Alarm':
+                self.resources[r] = cloud_watch.CloudWatchAlarm(r,
+                                                self.t['Resources'][r], self)
             else:
                 self.resources[r] = resources.GenericResource(r,
                                                 self.t['Resources'][r], self)

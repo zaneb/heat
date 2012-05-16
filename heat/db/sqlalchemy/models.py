@@ -182,3 +182,28 @@ class Resource(BASE, HeatBase):
     stack = relationship(Stack, backref=backref('resources'))
 
     depends_on = Column(Integer)
+
+
+class GuestWatch(BASE, HeatBase):
+    """Represents a guest_watch created by the heat engine."""
+
+    __tablename__ = 'guest_watch'
+
+    id = Column(Integer, primary_key=True)
+    name = Column('name', String, nullable=False)
+    rule = Column('rule', Json)
+    state = Column('state', String)
+    stack_name = Column('stack_name', String)
+
+
+class GuestData(BASE, HeatBase):
+    """Represents a guest_watch created by the heat engine."""
+
+    __tablename__ = 'guest_data'
+
+    id = Column(Integer, primary_key=True)
+    data = Column('data', Json)
+
+    guest_watch_id = Column(Integer, ForeignKey('guest_watch.id'),\
+                                 nullable=False)
+    guest_watch = relationship(GuestWatch, backref=backref('guest_data'))
