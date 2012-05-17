@@ -370,7 +370,6 @@ class EngineManager(manager.Manager):
             dt_period = datetime.timedelta(seconds=int(wr.rule['Period']))
             if now < (wr.last_evaluated + dt_period):
                 continue
-            wr.last_evaluated = now
 
             # get dataset ordered by creation_at
             # - most recient first
@@ -384,24 +383,32 @@ class EngineManager(manager.Manager):
 
             stat = wr.rule['Statistic']
             data = 0
-            if stat == 'SampleCount':
-                data = len(wds)
-            else:
-                for e in wds:
-                    metric = int(e.data[wr.rule['MetricName']])
+            samples = 0
+            for d in wds:
+                if d.created_at < wr.last_evaluated:
+                    logger.debug('ignoring old data %s: %s < %s' % \
+                                 (wr.rule['MetricName'],
+                                  str(d.created_at),
+                                  str(wr.last_evaluated)))
+                    continue
+                samples = samples + 1
+                metric = 1
+                data = samples
+                if stat != 'SampleCount':
+                    metric = int(d.data[wr.rule['MetricName']])
                     data = self.do_data_calc(wr.rule, data, metric)
-                    logger.debug('%s: %d/%d' % (wr.rule['MetricName'],
-                                                metric, data))
+                logger.debug('%s: %d/%d' % (wr.rule['MetricName'],
+                                            metric, data))
 
-                if stat == 'Average':
-                    data = data / period
+            if stat == 'Average':
+                data = data / samples
 
             alarming = self.do_data_cmp(wr.rule, data,
                                         int(wr.rule['Threshold']))
-            logger.debug('%s: %d/%d => %d (%s)' % (wr.rule['MetricName'],
-                                              int(wr.rule['Threshold']),
-                                              data, alarming,
-                                              wr.state))
+            logger.debug('%s: %d/%d => %d (current state:%s)' % \
+                         (wr.rule['MetricName'],
+                          int(wr.rule['Threshold']),
+                          data, alarming, wr.state))
             if alarming and wr.state != 'ALARM':
                 wr.state = 'ALARM'
                 wr.save()
@@ -421,6 +428,8 @@ class EngineManager(manager.Manager):
                 wr.save()
                 logger.info('NORMAL> stack:%s, watch_name:%s',
                             wr.stack_name, wr.name)
+
+            wr.last_evaluated = now
 
 
     def create_watch_data(self, context, watch_name, stats_data):
