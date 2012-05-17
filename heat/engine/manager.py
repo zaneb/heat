@@ -392,7 +392,7 @@ class EngineManager(manager.Manager):
                 metric = 1
                 data = samples
                 if stat != 'SampleCount':
-                    metric = int(d.data[wr.rule['MetricName']])
+                    metric = int(d.data[wr.rule['MetricName']]['Value'])
                     data = self.do_data_calc(wr.rule, data, metric)
                 logger.debug('%s: %d/%d' % (wr.rule['MetricName'],
                                             metric, data))
