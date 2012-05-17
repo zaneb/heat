@@ -22,7 +22,7 @@ from heat.common import exception
 from heat.db import api as db_api
 from heat.engine.resources import Resource
 
-logger = logging.getLogger('heat.endine.cloud_watch')
+logger = logging.getLogger('heat.engine.cloud_watch')
 
 
 class CloudWatchAlarm(Resource):
@@ -93,7 +93,6 @@ class CloudWatchAlarm(Resource):
         self.state_set(self.DELETE_IN_PROGRESS)
 
         db_api.watch_rule_delete(None, self.name)
-        db_api.watch_data_delete(None, self.name)
 
         Resource.delete(self)
         self.state_set(self.DELETE_COMPLETE)

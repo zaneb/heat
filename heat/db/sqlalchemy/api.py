@@ -224,6 +224,10 @@ def watch_rule_delete(context, watch_name):
                         (watch_name, 'that does not exist'))
 
     session = Session.object_session(wr)
+
+    for d in wr.watch_data:
+        session.delete(d)
+
     session.delete(wr)
     session.flush()
 
