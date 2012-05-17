@@ -194,6 +194,7 @@ class WatchRule(BASE, HeatBase):
     rule = Column('rule', Json)
     state = Column('state', String)
     stack_name = Column('stack_name', String)
+    last_evaluated = Column(DateTime, default=timeutils.utcnow)
 
 
 class WatchData(BASE, HeatBase):

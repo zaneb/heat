@@ -21,6 +21,7 @@ def upgrade(migrate_engine):
                                assert_unicode=None,
                                unicode_error=None, _warn_on_bytestring=False)),
         Column('rule', Text()),
+        Column('last_evaluated', DateTime(timezone=False)),
     )
 
     try:
