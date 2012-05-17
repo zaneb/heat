@@ -148,8 +148,8 @@ def watch_data_create(context, values):
 
 
 def watch_data_get_all(context, watch_id):
-    # get dataset ordered by creation_at (most recient first)
     return IMPL.watch_data_get_all(context, watch_id)
+
 
 def watch_data_delete(context, watch_name):
     return IMPL.watch_data_delete(context, watch_name)

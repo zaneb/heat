@@ -66,7 +66,6 @@ class CloudWatchAlarm(Resource):
         # EvaluationPeriods > 0
         return None
 
-
     def create(self):
         if self.state != None:
             return
@@ -99,4 +98,3 @@ class CloudWatchAlarm(Resource):
 
     def FnGetRefId(self):
         return unicode(self.name)
-

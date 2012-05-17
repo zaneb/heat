@@ -258,5 +258,3 @@ def watch_data_delete(context, watch_name):
     for d in ds:
         session.delete(d)
     session.flush()
-
-

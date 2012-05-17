@@ -327,9 +327,6 @@ class EngineManager(manager.Manager):
         pt.save()
         return [None, metadata]
 
-
-
-
     def do_data_cmp(self, rule, data, threshold):
         op = rule['ComparisonOperator']
         if op == 'GreaterThanThreshold':
@@ -430,7 +427,6 @@ class EngineManager(manager.Manager):
                             wr.stack_name, wr.name)
 
             wr.last_evaluated = now
-
 
     def create_watch_data(self, context, watch_name, stats_data):
         '''
