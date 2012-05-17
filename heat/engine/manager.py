@@ -397,7 +397,7 @@ class EngineManager(manager.Manager):
                 logger.debug('%s: %d/%d' % (wr.rule['MetricName'],
                                             metric, data))
 
-            if stat == 'Average':
+            if stat == 'Average' and samples > 0:
                 data = data / samples
 
             alarming = self.do_data_cmp(wr.rule, data,
