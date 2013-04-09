@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
 from heat.openstack.common import log as logging
 
 from heat.common import exception
@@ -38,12 +37,17 @@ class Volume(resource.Resource):
             self.properties['Size'],
             display_name=self.physical_resource_name(),
             display_description=self.physical_resource_name())
+        self.resource_id_set(vol.id)
 
-        while vol.status == 'creating':
-            eventlet.sleep(1)
-            vol.get()
+        return vol
+
+    def check_active(self, vol):
+        vol.get()
+
         if vol.status == 'available':
-            self.resource_id_set(vol.id)
+            return True
+        elif vol.status == 'creating':
+            return False
         else:
             raise exception.Error(vol.status)
 

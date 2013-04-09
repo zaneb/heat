@@ -100,7 +100,6 @@ class VolumeTest(unittest.TestCase):
 
         # delete script
         self.fc.volumes.get('vol-123').AndReturn(fv)
-        eventlet.sleep(1).AndReturn(None)
 
         self.fc.volumes.get('vol-123').AndReturn(fv)
         self.fc.volumes.delete('vol-123').AndReturn(None)
@@ -137,8 +136,6 @@ class VolumeTest(unittest.TestCase):
         self.fc.volumes.create(
             u'1', display_description='%s.DataVolume' % stack_name,
             display_name='%s.DataVolume' % stack_name).AndReturn(fv)
-
-        eventlet.sleep(1).AndReturn(None)
 
         self.m.ReplayAll()
 
