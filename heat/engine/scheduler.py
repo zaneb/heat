@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
 import functools
 import itertools
 import types
+
+from time import sleep
 from time import time as wallclock
 
 from heat.openstack.common import excutils
@@ -98,7 +99,7 @@ class TaskRunner(object):
         """Sleep for the specified number of seconds."""
         if wait_time is not None:
             logger.debug('%s sleeping' % str(self))
-            eventlet.sleep(wait_time)
+            sleep(wait_time)
 
     def __call__(self, wait_time=1, timeout=None):
         """

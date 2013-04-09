@@ -16,7 +16,6 @@ import mox
 from nose.plugins.attrib import attr
 
 import contextlib
-import eventlet
 
 from heat.engine import scheduler
 
@@ -183,8 +182,8 @@ class TaskTest(mox.MoxTestBase):
 
     def test_sleep(self):
         sleep_time = 42
-        self.mox.StubOutWithMock(eventlet, 'sleep')
-        eventlet.sleep(sleep_time).MultipleTimes().AndReturn(None)
+        self.mox.StubOutWithMock(scheduler, 'sleep')
+        scheduler.sleep(sleep_time).MultipleTimes().AndReturn(None)
 
         self.mox.ReplayAll()
 
@@ -192,8 +191,8 @@ class TaskTest(mox.MoxTestBase):
         runner(wait_time=sleep_time)
 
     def test_sleep_zero(self):
-        self.mox.StubOutWithMock(eventlet, 'sleep')
-        eventlet.sleep(0).MultipleTimes().AndReturn(None)
+        self.mox.StubOutWithMock(scheduler, 'sleep')
+        scheduler.sleep(0).MultipleTimes().AndReturn(None)
 
         self.mox.ReplayAll()
 
@@ -201,7 +200,7 @@ class TaskTest(mox.MoxTestBase):
         runner(wait_time=0)
 
     def test_sleep_none(self):
-        self.mox.StubOutWithMock(eventlet, 'sleep')
+        self.mox.StubOutWithMock(scheduler, 'sleep')
         self.mox.ReplayAll()
 
         runner = scheduler.TaskRunner(DummyTask())
