@@ -34,6 +34,7 @@ class DBInstanceTest(unittest.TestCase):
     def setUp(self):
         self.m = mox.Mox()
         self.m.StubOutWithMock(dbi.DBInstance, 'create_with_template')
+        self.m.StubOutWithMock(dbi.DBInstance, 'check_active')
         self.m.StubOutWithMock(dbi.DBInstance, 'nested')
 
     def tearDown(self):
@@ -92,6 +93,7 @@ class DBInstanceTest(unittest.TestCase):
 
         dbi.DBInstance.create_with_template(mox.IgnoreArg(),
                                             params).AndReturn(None)
+        dbi.DBInstance.check_active(mox.IgnoreArg()).AndReturn(True)
 
         fn = FakeNested()
 
