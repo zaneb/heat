@@ -64,7 +64,7 @@ class Volume(resource.Resource):
                     raise exception.Error("Volume in use")
 
                 self.cinder().volumes.delete(self.resource_id)
-            except clients.cinder_exceptions.NotFound:
+            except clients.cinderclient.exceptions.NotFound:
                 pass
 
 

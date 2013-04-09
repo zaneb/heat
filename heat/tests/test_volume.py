@@ -105,7 +105,7 @@ class VolumeTest(unittest.TestCase):
         self.fc.volumes.delete('vol-123').AndReturn(None)
 
         self.fc.volumes.get('vol-123').AndRaise(
-            clients.cinder_exceptions.NotFound('Not found'))
+            clients.cinderclient.exceptions.NotFound('Not found'))
         self.m.ReplayAll()
 
         t = self.load_template()
