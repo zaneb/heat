@@ -15,7 +15,6 @@
 import copy
 import os
 
-import eventlet
 import unittest
 import mox
 
@@ -65,7 +64,7 @@ class InstanceGroupTest(unittest.TestCase):
         return stack
 
     def _stub_create(self, num):
-        self.m.StubOutWithMock(eventlet, 'sleep')
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
 
         self.m.StubOutWithMock(instance.Instance, 'handle_create')
         self.m.StubOutWithMock(instance.Instance, 'check_active')
@@ -73,7 +72,7 @@ class InstanceGroupTest(unittest.TestCase):
         for x in range(num):
             instance.Instance.handle_create().AndReturn(cookie)
         instance.Instance.check_active(cookie).AndReturn(False)
-        eventlet.sleep(mox.IsA(int)).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         instance.Instance.check_active(cookie).MultipleTimes().AndReturn(True)
 
     def create_instance_group(self, t, stack, resource_name):

@@ -17,7 +17,6 @@ import os
 import datetime
 import copy
 
-import eventlet
 import unittest
 import mox
 
@@ -85,7 +84,7 @@ class AutoScalingTest(unittest.TestCase):
         return resource
 
     def _stub_create(self, num):
-        self.m.StubOutWithMock(eventlet, 'sleep')
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
 
         self.m.StubOutWithMock(instance.Instance, 'handle_create')
         self.m.StubOutWithMock(instance.Instance, 'check_active')
@@ -93,7 +92,7 @@ class AutoScalingTest(unittest.TestCase):
         for x in range(num):
             instance.Instance.handle_create().AndReturn(cookie)
         instance.Instance.check_active(cookie).AndReturn(False)
-        eventlet.sleep(mox.IsA(int)).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         instance.Instance.check_active(cookie).MultipleTimes().AndReturn(True)
 
     def _stub_lb_reload(self, expected_list, unset=True):

@@ -19,7 +19,6 @@ import uuid
 import datetime
 import json
 
-import eventlet
 from nose.plugins.attrib import attr
 from oslo.config import cfg
 import unittest
@@ -84,7 +83,7 @@ class WaitConditionTest(unittest.TestCase):
         self.m = mox.Mox()
         self.m.StubOutWithMock(wc.WaitConditionHandle,
                                'get_status')
-        self.m.StubOutWithMock(eventlet, 'sleep')
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
 
         cfg.CONF.set_default('heat_waitcondition_server_url',
                              'http://127.0.0.1:8000/v1/waitcondition')
@@ -125,9 +124,9 @@ class WaitConditionTest(unittest.TestCase):
     def test_post_success_to_handle(self):
         self.stack = self.create_stack()
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['SUCCESS'])
 
         self.m.ReplayAll()
@@ -147,9 +146,9 @@ class WaitConditionTest(unittest.TestCase):
     def test_post_failure_to_handle(self):
         self.stack = self.create_stack()
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['FAILURE'])
 
         self.m.ReplayAll()
@@ -170,11 +169,11 @@ class WaitConditionTest(unittest.TestCase):
     def test_post_success_to_handle_count(self):
         self.stack = self.create_stack(template=test_template_wc_count)
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['SUCCESS'])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['SUCCESS', 'SUCCESS'])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['SUCCESS', 'SUCCESS',
                                                        'SUCCESS'])
 
@@ -195,9 +194,9 @@ class WaitConditionTest(unittest.TestCase):
     def test_post_failure_to_handle_count(self):
         self.stack = self.create_stack(template=test_template_wc_count)
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['SUCCESS'])
-        eventlet.sleep(1).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         wc.WaitConditionHandle.get_status().AndReturn(['SUCCESS', 'FAILURE'])
 
         self.m.ReplayAll()
@@ -226,10 +225,10 @@ class WaitConditionTest(unittest.TestCase):
         scheduler.wallclock().AndReturn(st + 0.001)
         scheduler.wallclock().AndReturn(st + 0.1)
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(mox.IsA(int)).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         scheduler.wallclock().AndReturn(st + 4.1)
         wc.WaitConditionHandle.get_status().AndReturn([])
-        eventlet.sleep(mox.IsA(int)).AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
         scheduler.wallclock().AndReturn(st + 5.1)
 
         self.m.ReplayAll()

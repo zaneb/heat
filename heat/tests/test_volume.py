@@ -15,7 +15,6 @@
 
 import os
 
-import eventlet
 import mox
 import unittest
 
@@ -44,7 +43,7 @@ class VolumeTest(unittest.TestCase):
         self.m.StubOutWithMock(self.fc.volumes, 'delete')
         self.m.StubOutWithMock(self.fc.volumes, 'create_server_volume')
         self.m.StubOutWithMock(self.fc.volumes, 'delete_server_volume')
-        self.m.StubOutWithMock(eventlet, 'sleep')
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
 
     def tearDown(self):
         self.m.UnsetStubs()
@@ -165,7 +164,7 @@ class VolumeTest(unittest.TestCase):
         clients.OpenStackClients.nova().MultipleTimes().AndReturn(self.fc)
 #        clients.OpenStackClients.cinder().MultipleTimes().AndReturn(self.fc)
 
-        eventlet.sleep(1).MultipleTimes().AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).MultipleTimes()
         self.fc.volumes.create_server_volume(
             device=u'/dev/vdc',
             server_id=u'WikiDatabase',
@@ -202,7 +201,7 @@ class VolumeTest(unittest.TestCase):
         # create script
         clients.OpenStackClients.nova().MultipleTimes().AndReturn(self.fc)
         #clients.OpenStackClients.cinder().MultipleTimes().AndReturn(self.fc)
-        eventlet.sleep(1).MultipleTimes().AndReturn(None)
+        scheduler.TaskRunner._sleep(mox.IsA(int)).MultipleTimes()
         self.fc.volumes.create_server_volume(
             device=u'/dev/vdc',
             server_id=u'WikiDatabase',
