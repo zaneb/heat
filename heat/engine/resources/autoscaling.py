@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
-
 from heat.common import exception
 from heat.engine import resource
 from heat.engine import scheduler
@@ -89,8 +87,12 @@ class InstanceGroup(resource.Resource):
         return creator.step()
 
     def _wait_for_activation(self, creator):
-        while not self.check_active(creator):
-            eventlet.sleep(1)
+        def activation_task():
+            yield
+            while not self.check_active(creator):
+                yield
+
+        scheduler.TaskRunner(activation_task)()
 
     def handle_update(self, json_snippet):
         try:
