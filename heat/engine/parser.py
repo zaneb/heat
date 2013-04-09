@@ -21,6 +21,7 @@ from heat.common import exception
 from heat.engine import dependencies
 from heat.common import identifier
 from heat.engine import resource
+from heat.engine import scheduler
 from heat.engine import template
 from heat.engine import timestamp
 from heat.engine.parameters import Parameters
@@ -276,7 +277,7 @@ class Stack(object):
                 for res in self:
                     if stack_status != self.CREATE_FAILED:
                         try:
-                            res.create()
+                            scheduler.TaskRunner(res.create)()
                         except exception.ResourceFailure as ex:
                             stack_status = self.CREATE_FAILED
                             reason = 'Resource %s failed with: %s' % (str(res),
@@ -368,7 +369,7 @@ class Stack(object):
                         self.dependencies = self._get_dependencies(
                             self.resources.itervalues())
                         try:
-                            self[res.name].create()
+                            scheduler.TaskRunner(res.create)()
                         except exception.ResourceFailure as ex:
                             logger.error("Failed to add %s : %s" %
                                          (res.name, str(ex)))
@@ -422,7 +423,7 @@ class Stack(object):
                                 self.dependencies = self._get_dependencies(
                                     self.resources.itervalues())
                                 try:
-                                    self[res.name].create()
+                                    scheduler.TaskRunner(res.create)()
                                 except exception.ResourceFailure as ex:
                                     logger.error("Failed to create %s : %s" %
                                                  (res.name, str(ex)))
@@ -545,7 +546,7 @@ class Stack(object):
         for res in deps:
             if not failed:
                 try:
-                    res.create()
+                    scheduler.TaskRunner(res.create)()
                 except exception.ResourceFailure as ex:
                     logger.exception('create')
                     failed = True
