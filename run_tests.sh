@@ -40,6 +40,7 @@ wrapper=""
 
 function run_tests {
     echo 'Running tests'
+    find heat/db/sqlalchemy/migrate_repo/versions/ -name '*.pyc' -delete
     NOSETESTS="python heat/testing/runner.py $noseopts $noseargs"
     # Just run the test suites in current environment
     ${wrapper} $NOSETESTS 2> run_tests.err.log
