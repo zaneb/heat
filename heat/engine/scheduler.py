@@ -14,8 +14,11 @@
 #    under the License.
 
 import eventlet
+import functools
+import itertools
 import types
 
+from heat.openstack.common import excutils
 from heat.openstack.common import log as logging
 
 logger = logging.getLogger(__name__)
@@ -130,3 +133,84 @@ class TaskRunner(object):
     def __nonzero__(self):
         """Return True if there are steps remaining."""
         return not self.done()
+
+
+class TaskGroup(object):
+    """
+    A task which manages a group of subtasks.
+
+    When the task is started, all of its subtasks are also started. The task
+    completes when all subtasks are complete.
+
+    Once started, the subtasks are assumed to be only polling for completion
+    of an asynchronous operation, so no attempt is made to give them equal
+    scheduling slots.
+    """
+
+    def __init__(self, tasks, name=None):
+        """Initialise with a list of tasks"""
+        self._tasks = list(tasks)
+        if name is None:
+            name = ', '.join(task_description(t) for t in self._tasks)
+        self.name = name
+
+    @staticmethod
+    def _args(arg_lists):
+        """Return a list containing the positional args for each subtask."""
+        return zip(*arg_lists)
+
+    @staticmethod
+    def _kwargs(kwarg_lists):
+        """Return a list containing the keyword args for each subtask."""
+        keygroups = (itertools.izip(itertools.repeat(name),
+                                    arglist)
+                     for name, arglist in kwarg_lists.iteritems())
+        return [dict(kwargs) for kwargs in itertools.izip(*keygroups)]
+
+    @classmethod
+    def from_task_with_args(cls, task, *arg_lists, **kwarg_lists):
+        """
+        Return a new TaskGroup where each subtask is identical except for the
+        arguments passed to it.
+
+        Each argument to use should be passed as a list (or iterable) of values
+        such that one is passed in the corresponding position for each subtask.
+        The number of subtasks spawned depends on the length of the argument
+        lists. If multiple arguments are supplied, each should be of the same
+        length. In the case of any discrepancy, the length of the shortest
+        argument list will be used, and any extra arguments discarded.
+        """
+
+        args_list = cls._args(arg_lists)
+        kwargs_list = cls._kwargs(kwarg_lists)
+
+        if kwarg_lists and not arg_lists:
+            args_list = [[]] * len(kwargs_list)
+        elif arg_lists and not kwarg_lists:
+            kwargs_list = [{}] * len(args_list)
+
+        task_args = itertools.izip(args_list, kwargs_list)
+        tasks = (functools.partial(task, *a, **kwa) for a, kwa in task_args)
+
+        return cls(tasks, name=task_description(task))
+
+    def __repr__(self):
+        """Return a string representation of the task group."""
+        return '%s(%s)' % (type(self).__name__, self.name)
+
+    def __call__(self):
+        """Return a co-routine which runs the task group"""
+        runners = [TaskRunner(t) for t in self._tasks]
+
+        try:
+            for r in runners:
+                r.start()
+
+            while runners:
+                yield
+                runners = list(itertools.dropwhile(lambda r: r.step(),
+                                                   runners))
+        except:
+            with excutils.save_and_reraise_exception():
+                for r in self.runners:
+                    r.cancel()
