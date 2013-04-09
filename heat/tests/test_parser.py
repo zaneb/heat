@@ -24,6 +24,7 @@ from heat.common import template_format
 from heat.engine import resource
 from heat.engine import parser
 from heat.engine import parameters
+from heat.engine import scheduler
 from heat.engine import template
 
 from heat.tests.utils import stack_delete_after
@@ -881,8 +882,14 @@ class StackTest(unittest.TestCase):
 
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
                                   template.Template(tmpl))
+
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
+        self.m.ReplayAll()
+
         self.stack.store()
         self.stack.create()
+        self.m.VerifyAll()
         self.assertEqual(self.stack.state, parser.Stack.CREATE_COMPLETE)
         self.assertEqual(self.stack['AResource'].properties['Foo'], 'abc')
         self.assertEqual(self.stack['BResource'].properties['Foo'],
@@ -940,8 +947,15 @@ class StackTest(unittest.TestCase):
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
                                   template.Template(tmpl),
                                   disable_rollback=False)
+
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
+        self.m.ReplayAll()
+
         self.stack.store()
         self.stack.create()
+        self.m.VerifyAll()
+
         self.assertEqual(self.stack.state, parser.Stack.CREATE_COMPLETE)
         self.assertEqual(self.stack['AResource'].properties['Foo'], 'abc')
         self.assertEqual(self.stack['BResource'].properties['Foo'],
@@ -1007,8 +1021,15 @@ class StackTest(unittest.TestCase):
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
                                   template.Template(tmpl),
                                   disable_rollback=False)
+
+        self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
+        scheduler.TaskRunner._sleep(mox.IsA(int)).AndReturn(None)
+        self.m.ReplayAll()
+
         self.stack.store()
         self.stack.create()
+        self.m.VerifyAll()
+
         self.assertEqual(self.stack.state, parser.Stack.CREATE_COMPLETE)
         self.assertEqual(self.stack['AResource'].properties['Foo'], 'abc')
         self.assertEqual(self.stack['BResource'].properties['Foo'],
