@@ -763,7 +763,6 @@ class StackTest(HeatTestCase):
                                             'Properties': {'Foo': 'abc'}}}}
 
         self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
-        scheduler.TaskRunner._sleep(mox.IsA(int)).MultipleTimes()
         mox.Replay(scheduler.TaskRunner._sleep)
 
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
@@ -1207,7 +1206,7 @@ class StackTest(HeatTestCase):
         self.assertEqual(self.stack.state, parser.Stack.ROLLBACK_COMPLETE)
         self.assertEqual(self.stack['AResource'].properties['Foo'], 'abc')
         self.assertEqual(self.stack['BResource'].properties['Foo'],
-                         'AResource3')
+                         'AResource1')
 
         self.m.VerifyAll()
 

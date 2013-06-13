@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from heat.engine import dependencies
 from heat.engine import resource
 from heat.engine import scheduler
 
@@ -42,88 +43,98 @@ class StackUpdate(object):
     def __call__(self):
         """Return a co-routine that updates the stack."""
 
-        existing_deps = self.existing_stack.dependencies
-        new_deps = self.new_stack.dependencies
-
-        cleanup = scheduler.DependencyTaskGroup(existing_deps,
-                                                self._remove_old_resource,
-                                                reverse=True)
-        create_new = scheduler.DependencyTaskGroup(new_deps,
-                                                   self._create_new_resource)
-        update = scheduler.DependencyTaskGroup(new_deps,
-                                               self._update_resource)
-
-        yield create_new()
+        update_task = scheduler.DependencyTaskGroup(self.dependencies(),
+                                                    self._resource_update)
         try:
-            yield update()
+            yield update_task()
         finally:
             prev_deps = self.previous_stack._get_dependencies(
                 self.previous_stack.resources.itervalues())
             self.previous_stack.dependencies = prev_deps
-        yield cleanup()
+
+    def _resource_update(self, res):
+        if res.name in self.new_stack and self.new_stack[res.name] is res:
+            return self._process_new_resource_update(res)
+        else:
+            return self._process_existing_resource_update(res)
 
     @scheduler.wrappertask
-    def _remove_old_resource(self, existing_res):
-        res_name = existing_res.name
-        if res_name not in self.new_stack:
-            logger.debug("resource %s not found in updated stack"
-                         % res_name + " definition, deleting")
-            yield existing_res.destroy()
-            del self.existing_stack.resources[res_name]
-
-    @scheduler.wrappertask
-    def _create_new_resource(self, new_res):
-        res_name = new_res.name
-        if res_name not in self.existing_stack:
-            logger.debug("resource %s not found in current stack"
-                         % res_name + " definition, adding")
-            new_res.stack = self.existing_stack
-            self.existing_stack[res_name] = new_res
-            yield new_res.create()
-
-    @scheduler.wrappertask
-    def _replace_resource(self, new_res):
+    def _process_new_resource_update(self, new_res):
         res_name = new_res.name
 
-        existing_res = self.existing_stack[res_name]
-        existing_res.stack = self.previous_stack
-        self.previous_stack[res_name] = existing_res
+        if res_name in self.existing_stack:
+            existing_res = self.existing_stack[res_name]
+            try:
+                yield self._update_in_place(existing_res,
+                                            new_res)
+            except resource.UpdateReplace:
+                # Retain for possible later rollback
+                existing_res.stack = self.previous_stack
+                self.previous_stack[res_name] = existing_res
+            else:
+                logger.info("Resource %s for stack %s updated" %
+                            (res_name, self.existing_stack.name))
+                return
 
         new_res.stack = self.existing_stack
         self.existing_stack[res_name] = new_res
+
         if new_res.state is None:
             yield new_res.create()
         else:
             new_res.state_set(new_res.UPDATE_COMPLETE)
 
-        # Remove from rollback cache
-        previous = resource.Resource(res_name,
-                                     self.previous_stack[res_name].t,
-                                     self.previous_stack)
-        self.previous_stack[res_name] = previous
-
-        existing_res.stack = self.existing_stack
-        yield existing_res.destroy()
-
     @scheduler.wrappertask
-    def _update_resource(self, new_res):
-        res_name = new_res.name
-
-        if res_name not in self.existing_snippets:
-            return
-
+    def _update_in_place(self, existing_res, new_res):
         # Compare resolved pre/post update resource snippets,
         # note the new resource snippet is resolved in the context
         # of the existing stack (which is the stack being updated)
-        existing_snippet = self.existing_snippets[res_name]
+        existing_snippet = self.existing_snippets[existing_res.name]
         new_snippet = self.existing_stack.resolve_runtime_data(new_res.t)
 
         if new_snippet != existing_snippet:
-            try:
-                yield self.existing_stack[res_name].update(new_snippet,
-                                                           existing_snippet)
-            except resource.UpdateReplace:
-                yield self._replace_resource(new_res)
-            else:
-                logger.info("Resource %s for stack %s updated" %
-                            (res_name, self.existing_stack.name))
+            yield existing_res.update(new_snippet, existing_snippet)
+
+    @scheduler.wrappertask
+    def _process_existing_resource_update(self, existing_res):
+        res_name = existing_res.name
+
+        if res_name in self.new_stack:
+            if self.new_stack[res_name].state is None:
+                # Already updated in-place
+                return
+
+        # Remove from rollback cache
+        if res_name in self.previous_stack:
+            previous = resource.Resource(res_name,
+                                         self.previous_stack[res_name].t,
+                                         self.previous_stack)
+            self.previous_stack[res_name] = previous
+
+        yield existing_res.destroy()
+
+        if res_name not in self.new_stack:
+            del self.existing_stack.resources[res_name]
+
+    def dependencies(self):
+        '''
+        Return a Dependencies object representing the dependencies between
+        update operations to move from an existing stack definition to a new
+        one.
+        '''
+        existing_deps = self.existing_stack.dependencies
+        new_deps = self.new_stack.dependencies
+
+        def edges():
+            # Create/update the new stack's resources in create order
+            for e in new_deps.graph().edges():
+                yield e
+            # Destroy/cleanup the old stack's resources in delete order
+            for e in existing_deps.graph(reverse=True).edges():
+                yield e
+            # Don't cleanup old resources until after they have been replaced
+            for res in self.existing_stack:
+                if res.name in self.new_stack:
+                    yield (res, self.new_stack[res.name])
+
+        return dependencies.Dependencies(edges())
