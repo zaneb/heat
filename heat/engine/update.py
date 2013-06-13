@@ -53,9 +53,14 @@ class StackUpdate(object):
         update = scheduler.DependencyTaskGroup(new_deps,
                                                self._update_resource)
 
-        yield cleanup()
         yield create_new()
-        yield update()
+        try:
+            yield update()
+        finally:
+            prev_deps = self.previous_stack._get_dependencies(
+                self.previous_stack.resources.itervalues())
+            self.previous_stack.dependencies = prev_deps
+        yield cleanup()
 
     @scheduler.wrappertask
     def _remove_old_resource(self, existing_res):
@@ -79,10 +84,26 @@ class StackUpdate(object):
     @scheduler.wrappertask
     def _replace_resource(self, new_res):
         res_name = new_res.name
-        yield self.existing_stack[res_name].destroy()
+
+        existing_res = self.existing_stack[res_name]
+        existing_res.stack = self.previous_stack
+        self.previous_stack[res_name] = existing_res
+
         new_res.stack = self.existing_stack
         self.existing_stack[res_name] = new_res
-        yield new_res.create()
+        if new_res.state is None:
+            yield new_res.create()
+        else:
+            new_res.state_set(new_res.UPDATE_COMPLETE)
+
+        # Remove from rollback cache
+        previous = resource.Resource(res_name,
+                                     self.previous_stack[res_name].t,
+                                     self.previous_stack)
+        self.previous_stack[res_name] = previous
+
+        existing_res.stack = self.existing_stack
+        yield existing_res.destroy()
 
     @scheduler.wrappertask
     def _update_resource(self, new_res):

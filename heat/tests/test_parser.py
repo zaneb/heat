@@ -721,7 +721,6 @@ class StackTest(HeatTestCase):
                                             'Properties': {'Foo': 'abc'}}}}
 
         self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
-        scheduler.TaskRunner._sleep(mox.IsA(int)).MultipleTimes()
         mox.Replay(scheduler.TaskRunner._sleep)
 
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
@@ -806,7 +805,6 @@ class StackTest(HeatTestCase):
                                             'Properties': {'Foo': 'abc'}}}}
 
         self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
-        scheduler.TaskRunner._sleep(mox.IsA(int)).MultipleTimes()
         mox.Replay(scheduler.TaskRunner._sleep)
 
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
@@ -900,10 +898,9 @@ class StackTest(HeatTestCase):
         # key/property in update_allowed_keys/update_allowed_properties
 
         # patch in a dummy handle_create making the replace fail when creating
-        # the replacement rsrc, but succeed the second call (rollback)
+        # the replacement rsrc
         self.m.StubOutWithMock(generic_rsrc.GenericResource, 'handle_create')
         generic_rsrc.GenericResource.handle_create().AndRaise(Exception)
-        generic_rsrc.GenericResource.handle_create().AndReturn(None)
         self.m.ReplayAll()
 
         self.stack.update(updated_stack)
@@ -921,7 +918,6 @@ class StackTest(HeatTestCase):
                                             'Properties': {'Foo': 'abc'}}}}
 
         self.m.StubOutWithMock(scheduler.TaskRunner, '_sleep')
-        scheduler.TaskRunner._sleep(mox.IsA(int)).MultipleTimes()
         mox.Replay(scheduler.TaskRunner._sleep)
 
         self.stack = parser.Stack(self.ctx, 'update_test_stack',
@@ -944,8 +940,9 @@ class StackTest(HeatTestCase):
         # patch in a dummy handle_create making the replace fail when creating
         # the replacement rsrc, and again on the second call (rollback)
         self.m.StubOutWithMock(generic_rsrc.GenericResource, 'handle_create')
+        self.m.StubOutWithMock(generic_rsrc.GenericResource, 'handle_delete')
         generic_rsrc.GenericResource.handle_create().AndRaise(Exception)
-        generic_rsrc.GenericResource.handle_create().AndRaise(Exception)
+        generic_rsrc.GenericResource.handle_delete().AndRaise(Exception)
         self.m.ReplayAll()
 
         self.stack.update(updated_stack)
@@ -1124,15 +1121,11 @@ class StackTest(HeatTestCase):
         # resource.UpdateReplace because we've not specified the modified
         # key/property in update_allowed_keys/update_allowed_properties
 
-        generic_rsrc.GenericResource.FnGetRefId().AndReturn(
+        generic_rsrc.GenericResource.FnGetRefId().MultipleTimes().AndReturn(
             'AResource')
 
         # mock to make the replace fail when creating the replacement resource
         generic_rsrc.GenericResource.handle_create().AndRaise(Exception)
-
-        generic_rsrc.GenericResource.handle_create().AndReturn(None)
-        generic_rsrc.GenericResource.FnGetRefId().MultipleTimes().AndReturn(
-            'AResource')
 
         self.m.ReplayAll()
 
@@ -1204,12 +1197,6 @@ class StackTest(HeatTestCase):
         # mock to make the replace fail when creating the second
         # replacement resource
         generic_rsrc.GenericResource.handle_create().AndRaise(Exception)
-
-        # Calls to GenericResource.handle_update will raise
-        # resource.UpdateReplace because we've not specified the modified
-        # key/property in update_allowed_keys/update_allowed_properties
-
-        generic_rsrc.GenericResource.handle_create().AndReturn(None)
 
         self.m.ReplayAll()
 

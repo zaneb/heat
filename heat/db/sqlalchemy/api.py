@@ -70,7 +70,8 @@ def resource_get(context, resource_id):
 def resource_get_by_name_and_stack(context, resource_name, stack_id):
     result = model_query(context, models.Resource).\
         filter_by(name=resource_name).\
-        filter_by(stack_id=stack_id).first()
+        filter_by(stack_id=stack_id).\
+        order_by('created_at').first()
 
     return result
 
