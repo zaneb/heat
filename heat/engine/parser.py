@@ -349,10 +349,6 @@ class Stack(object):
         else:
             self.state_set(self.ROLLBACK_IN_PROGRESS, 'Stack rollback started')
 
-        # cache all the resources runtime data.
-        for r in self:
-            r.cache_template()
-
         try:
             update_task = update.StackUpdate(self, newstack)
             updater = scheduler.TaskRunner(update_task)
