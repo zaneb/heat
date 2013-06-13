@@ -349,8 +349,10 @@ class Stack(object):
         else:
             self.state_set(self.ROLLBACK_IN_PROGRESS, 'Stack rollback started')
 
+        oldstack = Stack(self.context, self.name, self.t,
+                         self.parameters)
         try:
-            update_task = update.StackUpdate(self, newstack)
+            update_task = update.StackUpdate(self, newstack, oldstack)
             updater = scheduler.TaskRunner(update_task)
             try:
                 updater(timeout=self.timeout_secs())
@@ -378,8 +380,6 @@ class Stack(object):
                 if self.disable_rollback:
                     stack_status = self.UPDATE_FAILED
                 else:
-                    oldstack = Stack(self.context, self.name, self.t,
-                                     self.parameters)
                     self.update(oldstack, action=self.ROLLBACK)
                     return
             else:
