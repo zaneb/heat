@@ -329,14 +329,10 @@ class VolumeAttachment(resource.Resource):
         ),
     }
 
-    _instance_property = INSTANCE_ID
-    _volume_property = VOLUME_ID
-    _device_property = DEVICE
-
     def handle_create(self):
-        server_id = self.properties[self._instance_property]
-        volume_id = self.properties[self._volume_property]
-        dev = self.properties[self._device_property]
+        server_id = self.properties[self.INSTANCE_ID]
+        volume_id = self.properties[self.VOLUME_ID]
+        dev = self.properties[self.DEVICE]
 
         attach_task = VolumeAttachTask(self.stack, server_id, volume_id, dev)
         attach_runner = scheduler.TaskRunner(attach_task)
@@ -351,8 +347,8 @@ class VolumeAttachment(resource.Resource):
         return attach_runner.step()
 
     def handle_delete(self):
-        server_id = self.properties[self._instance_property]
-        volume_id = self.properties[self._volume_property]
+        server_id = self.properties[self.INSTANCE_ID]
+        volume_id = self.properties[self.VOLUME_ID]
         detach_task = VolumeDetachTask(self.stack, server_id, volume_id)
         scheduler.TaskRunner(detach_task)()
 
@@ -472,23 +468,29 @@ class CinderVolume(Volume):
 
 class CinderVolumeAttachment(VolumeAttachment):
 
-    properties_schema = {
-        'instance_uuid': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The ID of the server to which the '
-                             'volume attaches.')},
-        'volume_id': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The ID of the volume to be attached.')},
-        'mountpoint': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The location where the volume is exposed on '
-                             'the instance.')}
-    }
+    PROPERTIES = (
+        INSTANCE_ID, VOLUME_ID, DEVICE,
+    ) = (
+        'instance_uuid', 'volume_id', 'mountpoint',
+    )
 
-    _instance_property = 'instance_uuid'
-    _volume_property = 'volume_id'
-    _device_property = 'mountpoint'
+    properties_schema = {
+        INSTANCE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The ID of the server to which the volume attaches.'),
+            required=True
+        ),
+        VOLUME_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The ID of the volume to be attached.'),
+            required=True
+        ),
+        DEVICE: properties.Schema(
+            properties.Schema.STRING,
+            _('The location where the volume is exposed on the instance.'),
+            required=True
+        ),
+    }
 
 
 def resource_mapping():
