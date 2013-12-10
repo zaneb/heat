@@ -14,6 +14,7 @@
 
 from heat.engine import clients
 from heat.engine.resources.neutron import neutron
+from heat.engine import constraints
 from heat.engine import properties
 from heat.engine import scheduler
 
@@ -160,41 +161,75 @@ class FirewallRule(neutron.NeutronResource):
     A resource for the FirewallRule resource in Neutron FWaaS.
     """
 
-    properties_schema = {'name': {'Type': 'String',
-                                  'UpdateAllowed': True},
-                         'description': {'Type': 'String',
-                                         'UpdateAllowed': True},
-                         'shared': {'Type': 'Boolean',
-                                    'Default': False,
-                                    'UpdateAllowed': True},
-                         'protocol': {'Type': 'String',
-                                      'AllowedValues': ['tcp', 'udp', 'icmp',
-                                                        None],
-                                      'UpdateAllowed': True,
-                                      'Default': None},
-                         'ip_version': {'Type': 'String',
-                                        'UpdateAllowed': True,
-                                        'AllowedValues': ['4', '6'],
-                                        'Default': '4'},
-                         'source_ip_address': {'Type': 'String',
-                                               'UpdateAllowed': True,
-                                               'Default': None},
-                         'destination_ip_address': {'Type': 'String',
-                                                    'UpdateAllowed': True,
-                                                    'Default': None},
-                         'source_port': {'Type': 'String',
-                                         'UpdateAllowed': True,
-                                         'Default': None},
-                         'destination_port': {'Type': 'String',
-                                              'UpdateAllowed': True,
-                                              'Default': None},
-                         'action': {'Type': 'String',
-                                    'AllowedValues': ['allow', 'deny'],
-                                    'Default': 'deny',
-                                    'UpdateAllowed': True},
-                         'enabled': {'Type': 'Boolean',
-                                     'UpdateAllowed': True,
-                                     'Default': True}}
+    PROPERTIES = (
+        NAME, DESCRIPTION, SHARED, PROTOCOL, IP_VERSION,
+        SOURCE_IP_ADDRESS, DESTINATION_IP_ADDRESS, SOURCE_PORT,
+        DESTINATION_PORT, ACTION, ENABLED,
+    ) = (
+        'name', 'description', 'shared', 'protocol', 'ip_version',
+        'source_ip_address', 'destination_ip_address', 'source_port',
+        'destination_port', 'action', 'enabled',
+    )
+
+    properties_schema = {
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        SHARED: properties.Schema(
+            properties.Schema.BOOLEAN,
+            default=False,
+            update_allowed=True
+        ),
+        PROTOCOL: properties.Schema(
+            properties.Schema.STRING,
+            constraints=[
+                constraints.AllowedValues(['tcp', 'udp', 'icmp', None]),
+            ],
+            update_allowed=True
+        ),
+        IP_VERSION: properties.Schema(
+            properties.Schema.STRING,
+            default='4',
+            constraints=[
+                constraints.AllowedValues(['4', '6']),
+            ],
+            update_allowed=True
+        ),
+        SOURCE_IP_ADDRESS: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        DESTINATION_IP_ADDRESS: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        SOURCE_PORT: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        DESTINATION_PORT: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        ACTION: properties.Schema(
+            properties.Schema.STRING,
+            default='deny',
+            constraints=[
+                constraints.AllowedValues(['allow', 'deny']),
+            ],
+            update_allowed=True
+        ),
+        ENABLED: properties.Schema(
+            properties.Schema.BOOLEAN,
+            default=True,
+            update_allowed=True
+        ),
+    }
 
     attributes_schema = {
         'name': _('Name for the FirewallRule.'),
