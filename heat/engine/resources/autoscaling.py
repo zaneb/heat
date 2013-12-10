@@ -645,45 +645,76 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
 
 
 class LaunchConfiguration(resource.Resource):
-    tags_schema = {'Key': {'Type': 'String',
-                           'Required': True},
-                   'Value': {'Type': 'String',
-                             'Required': True}}
+
+    PROPERTIES = (
+        IMAGE_ID, INSTANCE_TYPE, KEY_NAME, USER_DATA, SECURITY_GROUPS,
+        KERNEL_ID, RAM_DISK_ID, BLOCK_DEVICE_MAPPINGS, NOVA_SCHEDULER_HINTS,
+    ) = (
+        'ImageId', 'InstanceType', 'KeyName', 'UserData', 'SecurityGroups',
+        'KernelId', 'RamDiskId', 'BlockDeviceMappings', 'NovaSchedulerHints',
+    )
+
+    _NOVA_SCHEDULER_HINT_KEYS = (
+        NOVA_SCHEDULER_HINT_KEY, NOVA_SCHEDULER_HINT_VALUE,
+    ) = (
+        'Key', 'Value',
+    )
+
     properties_schema = {
-        'ImageId': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Glance image ID or name.')},
-        'InstanceType': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Nova instance type (flavor).')},
-        'KeyName': {
-            'Type': 'String',
-            'Description': _('Optional Nova keypair name.')},
-        'UserData': {
-            'Type': 'String',
-            'Description': _('User data to pass to instance.')},
-        'SecurityGroups': {
-            'Type': 'List',
-            'Description': _('Security group names to assign.')},
-        'KernelId': {
-            'Type': 'String',
-            'Implemented': False,
-            'Description': _('Not Implemented.')},
-        'RamDiskId': {
-            'Type': 'String',
-            'Implemented': False,
-            'Description': _('Not Implemented.')},
-        'BlockDeviceMappings': {
-            'Type': 'String',
-            'Implemented': False,
-            'Description': _('Not Implemented.')},
-        'NovaSchedulerHints': {
-            'Type': 'List',
-            'Schema': {'Type': 'Map', 'Schema': tags_schema},
-            'Description': _('Scheduler hints to pass '
-                             'to Nova (Heat extension).')},
+        IMAGE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Glance image ID or name.'),
+            required=True
+        ),
+        INSTANCE_TYPE: properties.Schema(
+            properties.Schema.STRING,
+            _('Nova instance type (flavor).'),
+            required=True
+        ),
+        KEY_NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Optional Nova keypair name.')
+        ),
+        USER_DATA: properties.Schema(
+            properties.Schema.STRING,
+            _('User data to pass to instance.')
+        ),
+        SECURITY_GROUPS: properties.Schema(
+            properties.Schema.LIST,
+            _('Security group names to assign.')
+        ),
+        KERNEL_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Not Implemented.'),
+            implemented=False
+        ),
+        RAM_DISK_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Not Implemented.'),
+            implemented=False
+        ),
+        BLOCK_DEVICE_MAPPINGS: properties.Schema(
+            properties.Schema.STRING,
+            _('Not Implemented.'),
+            implemented=False
+        ),
+        NOVA_SCHEDULER_HINTS: properties.Schema(
+            properties.Schema.LIST,
+            _('Scheduler hints to pass to Nova (Heat extension).'),
+            schema=properties.Schema(
+                properties.Schema.MAP,
+                schema={
+                    NOVA_SCHEDULER_HINT_KEY: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                    NOVA_SCHEDULER_HINT_VALUE: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                },
+            )
+        ),
     }
 
     def FnGetRefId(self):
