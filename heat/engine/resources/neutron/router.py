@@ -80,27 +80,36 @@ class Router(neutron.NeutronResource):
 
 
 class RouterInterface(neutron.NeutronResource):
+    PROPERTIES = (
+        ROUTER_ID, SUBNET_ID, PORT_ID,
+    ) = (
+        'router_id', 'subnet_id', 'port_id',
+    )
+
     properties_schema = {
-        'router_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('The router id.')},
-        'subnet_id': {
-            'Type': 'String',
-            'Description': _('The subnet id, either '
-                             'subnet_id or port_id should be specified.')},
-        'port_id': {
-            'Type': 'String',
-            'Description': _('The port id, either '
-                             'subnet_id or port_id should be specified.')}}
+        ROUTER_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The router id.'),
+            required=True
+        ),
+        SUBNET_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The subnet id, either subnet_id or port_id should be '
+              'specified.')
+        ),
+        PORT_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The port id, either subnet_id or port_id should be specified.')
+        ),
+    }
 
     def validate(self):
         '''
         Validate any of the provided params
         '''
         super(RouterInterface, self).validate()
-        subnet_id = self.properties.get('subnet_id')
-        port_id = self.properties.get('port_id')
+        subnet_id = self.properties.get(self.SUBNET_ID)
+        port_id = self.properties.get(self.PORT_ID)
         if subnet_id and port_id:
             raise exception.ResourcePropertyConflict('subnet_id', 'port_id')
         if not subnet_id and not port_id:
@@ -108,7 +117,7 @@ class RouterInterface(neutron.NeutronResource):
             raise exception.StackValidationFailed(message=msg)
 
     def handle_create(self):
-        router_id = self.properties.get('router_id')
+        router_id = self.properties.get(self.ROUTER_ID)
         key = 'subnet_id'
         value = self.properties.get(key)
         if not value:
