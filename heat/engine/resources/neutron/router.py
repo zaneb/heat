@@ -29,14 +29,29 @@ logger = logging.getLogger(__name__)
 
 
 class Router(neutron.NeutronResource):
-    properties_schema = {'name': {'Type': 'String',
-                                  'UpdateAllowed': True},
-                         'value_specs': {'Type': 'Map',
-                                         'Default': {},
-                                         'UpdateAllowed': True},
-                         'admin_state_up': {'Type': 'Boolean',
-                                            'Default': True,
-                                            'UpdateAllowed': True}}
+    PROPERTIES = (
+        NAME, VALUE_SPECS, ADMIN_STATE_UP,
+    ) = (
+        'name', 'value_specs', 'admin_state_up',
+    )
+
+    properties_schema = {
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        VALUE_SPECS: properties.Schema(
+            properties.Schema.MAP,
+            default={},
+            update_allowed=True
+        ),
+        ADMIN_STATE_UP: properties.Schema(
+            properties.Schema.BOOLEAN,
+            default=True,
+            update_allowed=True
+        ),
+    }
+
     attributes_schema = {
         "status": _("The status of the router."),
         "external_gateway_info": _("Gateway network for the router."),
