@@ -33,11 +33,20 @@ logger = logging.getLogger(__name__)
 
 
 class Restarter(signal_responder.SignalResponder):
+    PROPERTIES = (
+        INSTANCE_ID,
+    ) = (
+        'InstanceId',
+    )
+
     properties_schema = {
-        'InstanceId': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Instance ID to be restarted.')}}
+        INSTANCE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Instance ID to be restarted.'),
+            required=True
+        ),
+    }
+
     attributes_schema = {
         "AlarmUrl": _("A signed url to handle the alarm "
                       "(Heat extension).")
@@ -65,11 +74,11 @@ class Restarter(signal_responder.SignalResponder):
         if alarm_state != 'alarm':
             return
 
-        victim = self._find_resource(self.properties['InstanceId'])
+        victim = self._find_resource(self.properties[self.INSTANCE_ID])
         if victim is None:
             logger.info(_('%(name)s Alarm, can not find instance '
                         '%(instance)s') % {'name': self.name,
-                        'instance': self.properties['InstanceId']})
+                        'instance': self.properties[self.INSTANCE_ID]})
             return
 
         logger.info(_('%(name)s Alarm, restarting resource: %(victim)s') % {
