@@ -47,135 +47,209 @@ class Group(resource.Resource):
     # the true API here, but since pyrax doesn't support the full flexibility
     # of the API, we'll have to restrict what users can provide.
 
-    network_schema = {
-        'uuid': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("UUID of network to attach to.")}}
-
-    server_args_schema = {
-        'name': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("Server name.")},
-        'flavorRef': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("Flavor ID.")},
-        'imageRef': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("Image ID.")},
-        'metadata': {
-            'Type': 'Map',
-            'Description': _("Metadata key and value pairs.")},
-        'personality': {
-            'Type': 'Map',
-            'Description': _("File path and contents.")},
-        'networks': {
-            'Type': 'Map',
-            'Schema': network_schema,
-            'Description': _(
-                "Networks to attach to. If unspecified, the instance will be "
-                "attached to the public Internet and private ServiceNet "
-                "networks.")},
-        # technically maps to OS-DCF:diskConfig
-        'diskConfig': {
-            'Type': 'String',
-            'AllowedValues': ['AUTO', 'MANUAL'],
-            'Description': _(
-                "Configuration specifying the partition layout. "
-                "AUTO to create a partition utilizing the entire disk, and "
-                "MANUAL to create a partition matching the source image.")},
-        'key_name': {
-            'Type': 'String',
-            'Description': _(
-                "Name of a previously created SSH keypair to allow key-based "
-                "authentication to the server."),
-        }
-    }
-
-    load_balancers_schema = {
-        'loadBalancerId': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("ID of the load balancer.")},
-        'port': {
-            'Type': 'Number',
-            'Required': True,
-            'Description': _("Server port to connect the load balancer to.")}
-    }
-
-    launch_config_args_schema = {
-        'server': {
-            'Type': 'Map',
-            'Required': True,
-            'Description': _("Server creation arguments, as accepted by the "
-                             "Cloud Servers server creation API."),
-            'Schema': server_args_schema},
-        'loadBalancers': {
-            'Type': 'List',
-            'Required': False,
-            'Description': _(
-                "List of load balancers to hook the server up to. If not "
-                "specified, no load balancing will be configured."),
-            'Schema': {'Type': 'Map', 'Schema': load_balancers_schema}},
-    }
-
-    launch_configuration_schema = {
-        'type': {
-            'Type': 'String',
-            'Required': True,
-            'AllowedValues': ['launch_server'],
-            'Description': _(
-                "Launch configuration method. "
-                "Only launch_server is currently supported.")},
-        'args': {
-            'Type': 'Map',
-            'Required': True,
-            'Schema': launch_config_args_schema,
-            'Description': _("Type-specific server launching arguments.")},
-    }
-
-    group_configuration_schema = {
-        'name': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("Name of the scaling group.")},
-        'cooldown': {
-            'Type': 'Number',
-            'Required': True,
-            'Description': _(
-                "Number of seconds after capacity changes during which "
-                "further capacity changes are disabled.")},
-        'minEntities': {
-            'Type': 'Number',
-            'Required': True,
-            'Description': _(
-                "Minimum number of entities in this scaling group.")},
-        'maxEntities': {
-            'Type': 'Number',
-            'Required': True,
-            'Description': _(
-                "Maximum number of entities in this scaling group.")},
-        'metadata': {
-            'Type': 'Map',
-            'Description': _(
-                "Arbitrary key/value metadata to associate with this group.")},
-    }
-
     # properties are identical to the API POST /groups.
+    PROPERTIES = (
+        GROUP_CONFIGURATION, LAUNCH_CONFIGURATION,
+    ) = (
+        'groupConfiguration', 'launchConfiguration',
+    )
+
+    _GROUP_CONFIGURATION_KEYS = (
+        GROUP_CONFIGURATION_MAX_ENTITIES, GROUP_CONFIGURATION_COOLDOWN,
+        GROUP_CONFIGURATION_NAME, GROUP_CONFIGURATION_MIN_ENTITIES,
+        GROUP_CONFIGURATION_METADATA,
+    ) = (
+        'maxEntities', 'cooldown',
+        'name', 'minEntities',
+        'metadata',
+    )
+
+    _LAUNCH_CONFIG_KEYS = (
+        LAUNCH_CONFIG_ARGS, LAUNCH_CONFIG_TYPE,
+    ) = (
+        'args', 'type',
+    )
+
+    _LAUNCH_CONFIG_ARGS_KEYS = (
+        LAUNCH_CONFIG_ARGS_LOAD_BALANCERS,
+        LAUNCH_CONFIG_ARGS_SERVER,
+    ) = (
+        'loadBalancers',
+        'server',
+    )
+
+    _LAUNCH_CONFIG_ARGS_LOAD_BALANCER_KEYS = (
+        LAUNCH_CONFIG_ARGS_LOAD_BALANCER_ID,
+        LAUNCH_CONFIG_ARGS_LOAD_BALANCER_PORT,
+    ) = (
+        'loadBalancerId',
+        'port',
+    )
+
+    _LAUNCH_CONFIG_ARGS_SERVER_KEYS = (
+        LAUNCH_CONFIG_ARGS_SERVER_NAME, LAUNCH_CONFIG_ARGS_SERVER_FLAVOR_REF,
+        LAUNCH_CONFIG_ARGS_SERVER_IMAGE_REF,
+        LAUNCH_CONFIG_ARGS_SERVER_METADATA,
+        LAUNCH_CONFIG_ARGS_SERVER_PERSONALITY,
+        LAUNCH_CONFIG_ARGS_SERVER_NETWORKS,
+        LAUNCH_CONFIG_ARGS_SERVER_DISK_CONFIG,
+        LAUNCH_CONFIG_ARGS_SERVER_KEY_NAME,
+    ) = (
+        'name', 'flavorRef',
+        'imageRef',
+        'metadata',
+        'personality',
+        'networks',
+        'diskConfig',  # technically maps to OS-DCF:diskConfig
+        'key_name',
+    )
+
+    _LAUNCH_CONFIG_ARGS_SERVER_NETWORKS_KEYS = (
+        LAUNCH_CONFIG_ARGS_SERVER_NETWORKS_UUID,
+    ) = (
+        'uuid',
+    )
+
+    _launch_configuration_args_schema = {
+        LAUNCH_CONFIG_ARGS_LOAD_BALANCERS: properties.Schema(
+            properties.Schema.LIST,
+            _('List of load balancers to hook the '
+              'server up to. If not specified, no '
+              'load balancing will be configured.'),
+            schema=properties.Schema(
+                properties.Schema.MAP,
+                schema={
+                    LAUNCH_CONFIG_ARGS_LOAD_BALANCER_ID: properties.Schema(
+                        properties.Schema.STRING,
+                        _('ID of the load balancer.'),
+                        required=True
+                    ),
+                    LAUNCH_CONFIG_ARGS_LOAD_BALANCER_PORT: properties.Schema(
+                        properties.Schema.NUMBER,
+                        _('Server port to connect the load balancer to.'),
+                        required=True
+                    ),
+                },
+            )
+        ),
+        LAUNCH_CONFIG_ARGS_SERVER: properties.Schema(
+            properties.Schema.MAP,
+            _('Server creation arguments, as accepted by the Cloud Servers '
+              'server creation API.'),
+            schema={
+                LAUNCH_CONFIG_ARGS_SERVER_NAME: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Server name.'),
+                    required=True
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_FLAVOR_REF: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Flavor ID.'),
+                    required=True
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_IMAGE_REF: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Image ID.'),
+                    required=True
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_METADATA: properties.Schema(
+                    properties.Schema.MAP,
+                    _('Metadata key and value pairs.')
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_PERSONALITY: properties.Schema(
+                    properties.Schema.MAP,
+                    _('File path and contents.')
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_NETWORKS: properties.Schema(
+                    properties.Schema.MAP,
+                    _('Networks to attach to. If unspecified, the instance '
+                      'will be attached to the public Internet and private '
+                      'ServiceNet networks.'),
+                    schema={
+                        LAUNCH_CONFIG_ARGS_SERVER_NETWORKS_UUID:
+                        properties.Schema(
+                            properties.Schema.STRING,
+                            _('UUID of network to attach to.'),
+                            required=True
+                        ),
+                    }
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_DISK_CONFIG: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Configuration specifying the partition layout. AUTO to '
+                      'create a partition utilizing the entire disk, and '
+                      'MANUAL to create a partition matching the source '
+                      'image.'),
+                    constraints=[
+                        constraints.AllowedValues(['AUTO', 'MANUAL']),
+                    ]
+                ),
+                LAUNCH_CONFIG_ARGS_SERVER_KEY_NAME: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Name of a previously created SSH keypair to allow '
+                      'key-based authentication to the server.')
+                ),
+            },
+            required=True
+        ),
+    }
+
     properties_schema = {
-        'groupConfiguration': {
-            'Type': 'Map',
-            'Required': True,
-            'Schema': group_configuration_schema,
-            'Description': _("Group configuration.")},
-        'launchConfiguration': {
-            'Type': 'Map',
-            'Required': True,
-            'Schema': launch_configuration_schema,
-            'Description': _("Launch configuration.")},
+        GROUP_CONFIGURATION: properties.Schema(
+            properties.Schema.MAP,
+            _('Group configuration.'),
+            schema={
+                GROUP_CONFIGURATION_MAX_ENTITIES: properties.Schema(
+                    properties.Schema.NUMBER,
+                    _('Maximum number of entities in this scaling group.'),
+                    required=True
+                ),
+                GROUP_CONFIGURATION_COOLDOWN: properties.Schema(
+                    properties.Schema.NUMBER,
+                    _('Number of seconds after capacity changes during '
+                      'which further capacity changes are disabled.'),
+                    required=True
+                ),
+                GROUP_CONFIGURATION_NAME: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Name of the scaling group.'),
+                    required=True
+                ),
+                GROUP_CONFIGURATION_MIN_ENTITIES: properties.Schema(
+                    properties.Schema.NUMBER,
+                    _('Minimum number of entities in this scaling group.'),
+                    required=True
+                ),
+                GROUP_CONFIGURATION_METADATA: properties.Schema(
+                    properties.Schema.MAP,
+                    _('Arbitrary key/value metadata to associate with '
+                      'this group.')
+                ),
+            },
+            required=True
+        ),
+        LAUNCH_CONFIGURATION: properties.Schema(
+            properties.Schema.MAP,
+            _('Launch configuration.'),
+            schema={
+                LAUNCH_CONFIG_ARGS: properties.Schema(
+                    properties.Schema.MAP,
+                    _('Type-specific server launching arguments.'),
+                    schema=_launch_configuration_args_schema,
+                    required=True
+                ),
+                LAUNCH_CONFIG_TYPE: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Launch configuration method. Only launch_server '
+                      'is currently supported.'),
+                    required=True,
+                    constraints=[
+                        constraints.AllowedValues(['launch_server']),
+                    ]
+                ),
+            },
+            required=True
+        ),
         # We don't allow scaling policies to be specified here, despite the
         # fact that the API supports it. Users should use the ScalingPolicy
         # resource.
@@ -188,40 +262,44 @@ class Group(resource.Resource):
     def _get_group_config_args(self, groupconf):
         """Get the groupConfiguration-related pyrax arguments."""
         return dict(
-            name=groupconf['name'],
-            cooldown=groupconf['cooldown'],
-            min_entities=groupconf['minEntities'],
-            max_entities=groupconf['maxEntities'],
-            metadata=groupconf.get('metadata', None))
+            name=groupconf[self.GROUP_CONFIGURATION_NAME],
+            cooldown=groupconf[self.GROUP_CONFIGURATION_COOLDOWN],
+            min_entities=groupconf[self.GROUP_CONFIGURATION_MIN_ENTITIES],
+            max_entities=groupconf[self.GROUP_CONFIGURATION_MAX_ENTITIES],
+            metadata=groupconf.get(self.GROUP_CONFIGURATION_METADATA, None))
 
     def _get_launch_config_args(self, launchconf):
         """Get the launchConfiguration-related pyrax arguments."""
-        lcargs = launchconf['args']
-        server_args = lcargs['server']
-        lbs = copy.deepcopy(lcargs.get('loadBalancers'))
+        lcargs = launchconf[self.LAUNCH_CONFIG_ARGS]
+        server_args = lcargs[self.LAUNCH_CONFIG_ARGS_SERVER]
+        lb_args = lcargs.get(self.LAUNCH_CONFIG_ARGS_LOAD_BALANCERS)
+        lbs = copy.deepcopy(lb_args)
         if lbs:
             for lb in lbs:
-                lb['loadBalancerId'] = int(lb['loadBalancerId'])
+                lbid = int(lb[self.LAUNCH_CONFIG_ARGS_LOAD_BALANCER_ID])
+                lb[self.LAUNCH_CONFIG_ARGS_LOAD_BALANCER_ID] = lbid
         return dict(
-            launch_config_type=launchconf['type'],
-            server_name=server_args['name'],
-            image=server_args['imageRef'],
-            flavor=server_args['flavorRef'],
-            disk_config=server_args.get('diskConfig'),
-            metadata=server_args.get('metadata'),
-            personality=server_args.get('personality'),
-            networks=server_args.get('networks'),
+            launch_config_type=launchconf[self.LAUNCH_CONFIG_TYPE],
+            server_name=server_args[self.GROUP_CONFIGURATION_NAME],
+            image=server_args[self.LAUNCH_CONFIG_ARGS_SERVER_IMAGE_REF],
+            flavor=server_args[self.LAUNCH_CONFIG_ARGS_SERVER_FLAVOR_REF],
+            disk_config=server_args.get(
+                self.LAUNCH_CONFIG_ARGS_SERVER_DISK_CONFIG),
+            metadata=server_args.get(self.GROUP_CONFIGURATION_METADATA),
+            personality=server_args.get(
+                self.LAUNCH_CONFIG_ARGS_SERVER_PERSONALITY),
+            networks=server_args.get(self.LAUNCH_CONFIG_ARGS_SERVER_NETWORKS),
             load_balancers=lbs,
-            key_name=server_args.get('key_name'),
+            key_name=server_args.get(self.LAUNCH_CONFIG_ARGS_SERVER_KEY_NAME),
         )
 
     def _get_create_args(self):
         """Get pyrax-style arguments for creating a scaling group."""
         args = self._get_group_config_args(
-            self.properties['groupConfiguration'])
+            self.properties[self.GROUP_CONFIGURATION])
         args['group_metadata'] = args.pop('metadata')
         args.update(self._get_launch_config_args(
-            self.properties['launchConfiguration']))
+            self.properties[self.LAUNCH_CONFIGURATION]))
         return args
 
     def handle_create(self):
@@ -259,7 +337,7 @@ class Group(resource.Resource):
             return
         asclient = self.stack.clients.auto_scale()
         args = self._get_group_config_args(
-            self.properties['groupConfiguration'])
+            self.properties[self.GROUP_CONFIGURATION])
         args['min_entities'] = 0
         args['max_entities'] = 0
         try:
