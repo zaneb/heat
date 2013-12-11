@@ -25,6 +25,7 @@ from heat.common import timeutils as iso8601utils
 from heat.openstack.common import log as logging
 from heat.openstack.common import timeutils
 from heat.engine.properties import Properties
+from heat.engine import constraints
 from heat.engine import properties
 from heat.engine import scheduler
 from heat.engine import stack_resource
@@ -394,58 +395,97 @@ class InstanceGroup(stack_resource.StackResource):
 
 
 class AutoScalingGroup(InstanceGroup, CooldownMixin):
-    tags_schema = {'Key': {'Type': 'String',
-                           'Required': True},
-                   'Value': {'Type': 'String',
-                             'Required': True}}
+
+    PROPERTIES = (
+        AVAILABILITY_ZONES, LAUNCH_CONFIGURATION_NAME, MAX_SIZE, MIN_SIZE,
+        COOLDOWN, DESIRED_CAPACITY, HEALTH_CHECK_GRACE_PERIOD,
+        HEALTH_CHECK_TYPE, LOAD_BALANCER_NAMES, VPCZONE_IDENTIFIER, TAGS,
+    ) = (
+        'AvailabilityZones', 'LaunchConfigurationName', 'MaxSize', 'MinSize',
+        'Cooldown', 'DesiredCapacity', 'HealthCheckGracePeriod',
+        'HealthCheckType', 'LoadBalancerNames', 'VPCZoneIdentifier', 'Tags',
+    )
+
+    _TAG_KEYS = (
+        TAG_KEY, TAG_VALUE,
+    ) = (
+        'Key', 'Value',
+    )
+
     properties_schema = {
-        'AvailabilityZones': {
-            'Required': True,
-            'Type': 'List',
-            'Description': _('Not Implemented.')},
-        'LaunchConfigurationName': {
-            'Required': True,
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Name of LaunchConfiguration resource.')},
-        'MaxSize': {
-            'Required': True,
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Maximum number of instances in the group.')},
-        'MinSize': {
-            'Required': True,
-            'UpdateAllowed': True,
-            'Type': 'String',
-            'Description': _('Minimum number of instances in the group.')},
-        'Cooldown': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Cooldown period, in seconds.')},
-        'DesiredCapacity': {
-            'Type': 'Number',
-            'UpdateAllowed': True,
-            'Description': _('Desired initial number of instances.')},
-        'HealthCheckGracePeriod': {
-            'Type': 'Integer',
-            'Implemented': False,
-            'Description': _('Not Implemented.')},
-        'HealthCheckType': {
-            'Type': 'String',
-            'AllowedValues': ['EC2', 'ELB'],
-            'Implemented': False,
-            'Description': _('Not Implemented.')},
-        'LoadBalancerNames': {
-            'Type': 'List',
-            'Description': _('List of LoadBalancer resources.')},
-        'VPCZoneIdentifier': {
-            'Type': 'List',
-            'Description': _('List of VPC subnet identifiers.')},
-        'Tags': {
-            'Type': 'List',
-            'Schema': {'Type': 'Map', 'Schema': tags_schema},
-            'Description': _('Tags to attach to this group.')}
+        AVAILABILITY_ZONES: properties.Schema(
+            properties.Schema.LIST,
+            _('Not Implemented.'),
+            required=True
+        ),
+        LAUNCH_CONFIGURATION_NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name of LaunchConfiguration resource.'),
+            required=True,
+            update_allowed=True
+        ),
+        MAX_SIZE: properties.Schema(
+            properties.Schema.STRING,
+            _('Maximum number of instances in the group.'),
+            required=True,
+            update_allowed=True
+        ),
+        MIN_SIZE: properties.Schema(
+            properties.Schema.STRING,
+            _('Minimum number of instances in the group.'),
+            required=True,
+            update_allowed=True
+        ),
+        COOLDOWN: properties.Schema(
+            properties.Schema.STRING,
+            _('Cooldown period, in seconds.'),
+            update_allowed=True
+        ),
+        DESIRED_CAPACITY: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Desired initial number of instances.'),
+            update_allowed=True
+        ),
+        HEALTH_CHECK_GRACE_PERIOD: properties.Schema(
+            properties.Schema.INTEGER,
+            _('Not Implemented.'),
+            implemented=False
+        ),
+        HEALTH_CHECK_TYPE: properties.Schema(
+            properties.Schema.STRING,
+            _('Not Implemented.'),
+            constraints=[
+                constraints.AllowedValues(['EC2', 'ELB']),
+            ],
+            implemented=False
+        ),
+        LOAD_BALANCER_NAMES: properties.Schema(
+            properties.Schema.LIST,
+            _('List of LoadBalancer resources.')
+        ),
+        VPCZONE_IDENTIFIER: properties.Schema(
+            properties.Schema.LIST,
+            _('List of VPC subnet identifiers.')
+        ),
+        TAGS: properties.Schema(
+            properties.Schema.LIST,
+            _('Tags to attach to this group.'),
+            schema=properties.Schema(
+                properties.Schema.MAP,
+                schema={
+                    TAG_KEY: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                    TAG_VALUE: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                },
+            )
+        ),
     }
+
     rolling_update_schema = {
         'MinInstancesInService': properties.Schema(properties.Schema.NUMBER,
                                                    default=0),
@@ -458,13 +498,14 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
                                                       schema=
                                                       rolling_update_schema)
     }
+
     update_allowed_keys = ('Properties', 'UpdatePolicy')
 
     def handle_create(self):
-        if self.properties['DesiredCapacity']:
-            num_to_create = int(self.properties['DesiredCapacity'])
+        if self.properties[self.DESIRED_CAPACITY]:
+            num_to_create = int(self.properties[self.DESIRED_CAPACITY])
         else:
-            num_to_create = int(self.properties['MinSize'])
+            num_to_create = int(self.properties[self.MIN_SIZE])
         initial_template = self._create_template(num_to_create)
         return self.create_with_template(initial_template, {})
 
@@ -509,15 +550,15 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
 
             # Figure out if an adjustment is required
             new_capacity = None
-            if 'MinSize' in prop_diff:
-                if capacity < int(self.properties['MinSize']):
-                    new_capacity = int(self.properties['MinSize'])
-            if 'MaxSize' in prop_diff:
-                if capacity > int(self.properties['MaxSize']):
-                    new_capacity = int(self.properties['MaxSize'])
-            if 'DesiredCapacity' in prop_diff:
-                if self.properties['DesiredCapacity']:
-                    new_capacity = int(self.properties['DesiredCapacity'])
+            if self.MIN_SIZE in prop_diff:
+                if capacity < int(self.properties[self.MIN_SIZE]):
+                    new_capacity = int(self.properties[self.MIN_SIZE])
+            if self.MAX_SIZE in prop_diff:
+                if capacity > int(self.properties[self.MAX_SIZE]):
+                    new_capacity = int(self.properties[self.MAX_SIZE])
+            if self.DESIRED_CAPACITY in prop_diff:
+                if self.properties[self.DESIRED_CAPACITY]:
+                    new_capacity = int(self.properties[self.DESIRED_CAPACITY])
 
             if new_capacity is not None:
                 self.adjust(new_capacity, adjustment_type='ExactCapacity')
@@ -530,7 +571,7 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
             logger.info(_("%(name)s NOT performing scaling adjustment, "
                         "cooldown %(cooldown)s") % {
                         'name': self.name,
-                        'cooldown': self.properties['Cooldown']})
+                        'cooldown': self.properties[self.COOLDOWN]})
             return
 
         capacity = len(self.get_instances())
@@ -549,8 +590,8 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
                               else math.ceil(delta))
             new_capacity = capacity + rounded
 
-        upper = int(self.properties['MaxSize'])
-        lower = int(self.properties['MinSize'])
+        upper = int(self.properties[self.MAX_SIZE])
+        lower = int(self.properties[self.MIN_SIZE])
 
         if new_capacity > upper:
             if upper > capacity:
@@ -584,8 +625,8 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
         the groupname and stack id.
         Note: the group name must match what is returned from FnGetRefId
         """
-        autoscaling_tag = [{'Key': 'AutoScalingGroupName',
-                            'Value': self.FnGetRefId()}]
+        autoscaling_tag = [{self.TAG_KEY: 'AutoScalingGroupName',
+                            self.TAG_VALUE: self.FnGetRefId()}]
         return super(AutoScalingGroup, self)._tags() + autoscaling_tag
 
     def validate(self):
@@ -597,8 +638,8 @@ class AutoScalingGroup(InstanceGroup, CooldownMixin):
         # availability zones, it will be possible to specify multiple subnets.
         # For now, only one subnet can be specified. The bug #1096017 tracks
         # this issue.
-        if self.properties.get('VPCZoneIdentifier') and \
-                len(self.properties['VPCZoneIdentifier']) != 1:
+        if self.properties.get(self.VPCZONE_IDENTIFIER) and \
+                len(self.properties[self.VPCZONE_IDENTIFIER]) != 1:
             raise exception.NotSupported(feature=_("Anything other than one "
                                          "VPCZoneIdentifier"))
 
