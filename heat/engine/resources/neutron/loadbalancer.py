@@ -150,64 +150,102 @@ class Pool(neutron.NeutronResource):
     A resource for managing load balancer pools in Neutron.
     """
 
-    vip_schema = {
-        'name': {
-            'Type': 'String',
-            'Description': _('Name of the vip.')},
-        'description': {
-            'Type': 'String',
-            'Description': _('Description of the vip.')},
-        'address': {
-            'Type': 'String',
-            'Description': _('IP address of the vip.')},
-        'connection_limit': {
-            'Type': 'Integer',
-            'Description': _('The maximum number of connections per second '
-                             'allowed for the vip.')},
-        'protocol_port': {
-            'Type': 'Integer', 'Required': True,
-            'Description': _('TCP port on which to listen for client traffic '
-                             'that is associated with the vip address.')},
-        'admin_state_up': {
-            'Default': True, 'Type': 'Boolean',
-            'Description': _('The administrative state of this vip.')}
-    }
+    PROPERTIES = (
+        PROTOCOL, SUBNET_ID, LB_METHOD, NAME, DESCRIPTION,
+        ADMIN_STATE_UP, VIP, MONITORS,
+    ) = (
+        'protocol', 'subnet_id', 'lb_method', 'name', 'description',
+        'admin_state_up', 'vip', 'monitors',
+    )
+
+    _VIP_KEYS = (
+        VIP_NAME, VIP_DESCRIPTION, VIP_ADDRESS, VIP_CONNECTION_LIMIT,
+        VIP_PROTOCOL_PORT, VIP_ADMIN_STATE_UP,
+    ) = (
+        'name', 'description', 'address', 'connection_limit',
+        'protocol_port', 'admin_state_up',
+    )
 
     properties_schema = {
-        'protocol': {
-            'Type': 'String', 'Required': True,
-            'AllowedValues': ['TCP', 'HTTP', 'HTTPS'],
-            'Description': _('Protocol for balancing.')},
-        'subnet_id': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The subnet on which the members of the pool '
-                             'will be located.')},
-        'lb_method': {
-            'Type': 'String', 'Required': True,
-            'AllowedValues': ['ROUND_ROBIN', 'LEAST_CONNECTIONS',
-                              'SOURCE_IP'],
-            'UpdateAllowed': True,
-            'Description': _('The algorithm used to distribute load between '
-                             'the members of the pool.')},
-        'name': {
-            'Type': 'String',
-            'Description': _('Name of the pool.')},
-        'description': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Description of the pool.')},
-        'admin_state_up': {
-            'Default': True, 'Type': 'Boolean',
-            'UpdateAllowed': True,
-            'Description': _('The administrative state of this pool.')},
-        'vip': {
-            'Type': 'Map', 'Schema': vip_schema, 'Required': True,
-            'Description': _('IP address and port of the pool.')},
-        'monitors': {
-            'Type': 'List',
-            'UpdateAllowed': True,
-            'Description': _('List of health monitors associated with the '
-                             'pool.')},
+        PROTOCOL: properties.Schema(
+            properties.Schema.STRING,
+            _('Protocol for balancing.'),
+            required=True,
+            constraints=[
+                constraints.AllowedValues(['TCP', 'HTTP', 'HTTPS']),
+            ]
+        ),
+        SUBNET_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The subnet on which the members of the pool will be located.'),
+            required=True
+        ),
+        LB_METHOD: properties.Schema(
+            properties.Schema.STRING,
+            _('The algorithm used to distribute load between the members of '
+              'the pool.'),
+            required=True,
+            constraints=[
+                constraints.AllowedValues(['ROUND_ROBIN',
+                                           'LEAST_CONNECTIONS', 'SOURCE_IP']),
+            ],
+            update_allowed=True
+        ),
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name of the pool.')
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            _('Description of the pool.'),
+            update_allowed=True
+        ),
+        ADMIN_STATE_UP: properties.Schema(
+            properties.Schema.BOOLEAN,
+            _('The administrative state of this pool.'),
+            default=True,
+            update_allowed=True
+        ),
+        VIP: properties.Schema(
+            properties.Schema.MAP,
+            _('IP address and port of the pool.'),
+            schema={
+                VIP_NAME: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Name of the vip.')
+                ),
+                VIP_DESCRIPTION: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Description of the vip.')
+                ),
+                VIP_ADDRESS: properties.Schema(
+                    properties.Schema.STRING,
+                    _('IP address of the vip.')
+                ),
+                VIP_CONNECTION_LIMIT: properties.Schema(
+                    properties.Schema.INTEGER,
+                    _('The maximum number of connections per second '
+                      'allowed for the vip.')
+                ),
+                VIP_PROTOCOL_PORT: properties.Schema(
+                    properties.Schema.INTEGER,
+                    _('TCP port on which to listen for client traffic '
+                      'that is associated with the vip address.'),
+                    required=True
+                ),
+                VIP_ADMIN_STATE_UP: properties.Schema(
+                    properties.Schema.BOOLEAN,
+                    _('The administrative state of this vip.'),
+                    default=True
+                ),
+            },
+            required=True
+        ),
+        MONITORS: properties.Schema(
+            properties.Schema.LIST,
+            _('List of health monitors associated with the pool.'),
+            update_allowed=True
+        ),
     }
 
     update_allowed_keys = ('Properties',)
@@ -242,8 +280,8 @@ class Pool(neutron.NeutronResource):
         vip_arguments = self.prepare_properties(
             vip_properties,
             '%s.vip' % (self.name,))
-        vip_arguments['protocol'] = self.properties['protocol']
-        vip_arguments['subnet_id'] = self.properties['subnet_id']
+        vip_arguments['protocol'] = self.properties[self.PROTOCOL]
+        vip_arguments['subnet_id'] = self.properties[self.SUBNET_ID]
         vip_arguments['pool_id'] = pool['id']
         vip = client.create_vip({'vip': vip_arguments})['vip']
 
@@ -265,10 +303,10 @@ class Pool(neutron.NeutronResource):
                 return True
             raise exception.Error(
                 'neutron reported unexpected vip resource[%s] status[%s]' %
-                (vip_attributes['name'], vip_attributes['status']))
+                (vip_attributes[self.VIP_NAME], vip_attributes['status']))
         raise exception.Error(
             'neutron report unexpected pool resource[%s] status[%s]' %
-            (attributes['name'], attributes['status']))
+            (attributes[self.VIP_NAME], attributes['status']))
 
     def handle_update(self, json_snippet, tmpl_diff, prop_diff):
         if prop_diff:
