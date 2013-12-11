@@ -25,30 +25,35 @@ logger = logging.getLogger(__name__)
 
 
 class FloatingIP(neutron.NeutronResource):
+    PROPERTIES = (
+        FLOATING_NETWORK_ID, VALUE_SPECS, PORT_ID, FIXED_IP_ADDRESS,
+    ) = (
+        'floating_network_id', 'value_specs', 'port_id', 'fixed_ip_address',
+    )
+
     properties_schema = {
-        'floating_network_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('ID of network to allocate floating IP from.')
-        },
-        'value_specs': {
-            'Type': 'Map',
-            'Default': {},
-            'Description': _('Extra parameters to include in the '
-                             '"floatingip" object in the creation request. '
-                             'Parameters are often specific to installed '
-                             'hardware or extensions.')
-        },
-        'port_id': {
-            'Type': 'String',
-            'Description': _('ID of an existing port with at least one IP '
-                             'address to associate with this floating IP.')
-        },
-        'fixed_ip_address': {
-            'Type': 'String',
-            'Description': _('IP address to use if the port has '
-                             'multiple addresses.')
-        }}
+        FLOATING_NETWORK_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('ID of network to allocate floating IP from.'),
+            required=True
+        ),
+        VALUE_SPECS: properties.Schema(
+            properties.Schema.MAP,
+            _('Extra parameters to include in the "floatingip" object in the '
+              'creation request. Parameters are often specific to installed '
+              'hardware or extensions.'),
+            default={}
+        ),
+        PORT_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('ID of an existing port with at least one IP address to '
+              'associate with this floating IP.')
+        ),
+        FIXED_IP_ADDRESS: properties.Schema(
+            properties.Schema.STRING,
+            _('IP address to use if the port has multiple addresses.')
+        ),
+    }
 
     attributes_schema = {
         'router_id': _('ID of the router used as gateway, set when associated '
@@ -70,7 +75,7 @@ class FloatingIP(neutron.NeutronResource):
         for resource in self.stack.itervalues():
             if (resource.has_interface('OS::Neutron::RouterGateway') and
                 resource.properties.get('network_id') ==
-                    self.properties.get('floating_network_id')):
+                    self.properties.get(self.FLOATING_NETWORK_ID)):
                         deps += (self, resource)
 
     def handle_create(self):
