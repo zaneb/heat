@@ -20,6 +20,7 @@ from heat.openstack.common.importutils import try_import
 
 from heat.common import exception
 from heat.engine import clients
+from heat.engine import properties
 from heat.engine import resource
 from heat.engine.resources import nova_utils
 from heat.engine import scheduler
@@ -35,26 +36,53 @@ class Volume(resource.Resource):
                    'Value': {'Type': 'String',
                              'Required': True}}
 
+    PROPERTIES = (
+        AVAILABILITY_ZONE, SIZE, BACKUP_ID, TAGS,
+    ) = (
+        'AvailabilityZone', 'Size', 'SnapshotId', 'Tags',
+    )
+
+    _TAG_KEYS = (
+        TAG_KEY, TAG_VALUE,
+    ) = (
+        'Key', 'Value',
+    )
+
     properties_schema = {
-        'AvailabilityZone': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The availability zone in which the volume '
-                             'will be created.')},
-        'Size': {
-            'Type': 'Number',
-            'Description': _('The size of the volume in GB.')},
-        'SnapshotId': {
-            'Type': 'String',
-            'Description': _('If specified, the backup used as the source '
-                             'to create the volume.')},
-        'Tags': {
-            'Type': 'List',
-            'Description': _('The list of tags to associate '
-                             'with the volume.'),
-            'Schema': {'Type': 'Map', 'Schema': tags_schema}},
+        AVAILABILITY_ZONE: properties.Schema(
+            properties.Schema.STRING,
+            _('The availability zone in which the volume will be created.'),
+            required=True
+        ),
+        SIZE: properties.Schema(
+            properties.Schema.NUMBER,
+            _('The size of the volume in GB.')
+        ),
+        BACKUP_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('If specified, the backup used as the source to create the '
+              'volume.')
+        ),
+        TAGS: properties.Schema(
+            properties.Schema.LIST,
+            _('The list of tags to associate with the volume.'),
+            schema=properties.Schema(
+                properties.Schema.MAP,
+                schema={
+                    TAG_KEY: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                    TAG_VALUE: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                },
+            )
+        ),
     }
 
-    _restore_property = 'SnapshotId'
+    _restore_property = BACKUP_ID
 
     _volume_creating_status = ['creating', 'restoring-backup']
 
@@ -65,15 +93,16 @@ class Volume(resource.Resource):
         return self.physical_resource_name()
 
     def _create_arguments(self):
-        if self.properties['Tags']:
-            tags = dict((tm['Key'], tm['Value'])
-                        for tm in self.properties['Tags'])
+        if self.properties[self.TAGS]:
+            tags = dict((tm[self.TAG_KEY], tm[self.TAG_VALUE])
+                        for tm in self.properties[self.TAGS])
         else:
             tags = None
 
         return {
-            'size': self.properties['Size'],
-            'availability_zone': self.properties['AvailabilityZone'] or None,
+            'size': self.properties[self.SIZE],
+            'availability_zone': (self.properties[self.AVAILABILITY_ZONE] or
+                                  None),
             'metadata': tags
         }
 
