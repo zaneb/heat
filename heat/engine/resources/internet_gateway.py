@@ -79,25 +79,34 @@ class InternetGateway(resource.Resource):
 
 class VPCGatewayAttachment(resource.Resource):
 
+    PROPERTIES = (
+        VPC_ID, INTERNET_GATEWAY_ID, VPN_GATEWAY_ID,
+    ) = (
+        'VpcId', 'InternetGatewayId', 'VpnGatewayId',
+    )
+
     properties_schema = {
-        'VpcId': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('VPC ID for this gateway association.')},
-        'InternetGatewayId': {
-            'Type': 'String',
-            'Description': _('ID of the InternetGateway.')},
-        'VpnGatewayId': {
-            'Type': 'String',
-            'Implemented': False,
-            'Description': _('ID of the VPNGateway to attach to the VPC.')}
+        VPC_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('VPC ID for this gateway association.'),
+            required=True
+        ),
+        INTERNET_GATEWAY_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('ID of the InternetGateway.')
+        ),
+        VPN_GATEWAY_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('ID of the VPNGateway to attach to the VPC.'),
+            implemented=False
+        ),
     }
 
     def _vpc_route_tables(self):
         for resource in self.stack.itervalues():
             if (resource.has_interface('AWS::EC2::RouteTable') and
                 resource.properties.get('VpcId') ==
-                    self.properties.get('VpcId')):
+                    self.properties.get(self.VPC_ID)):
                         yield resource
 
     def add_dependencies(self, deps):
