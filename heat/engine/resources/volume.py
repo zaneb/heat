@@ -82,8 +82,6 @@ class Volume(resource.Resource):
         ),
     }
 
-    _restore_property = BACKUP_ID
-
     _volume_creating_status = ['creating', 'restoring-backup']
 
     def _display_name(self):
@@ -107,12 +105,12 @@ class Volume(resource.Resource):
         }
 
     def handle_create(self):
-        backup_id = self.properties.get(self._restore_property)
+        backup_id = self.properties.get(self.BACKUP_ID)
         cinder = self.cinder()
         if backup_id is not None:
             if volume_backups is None:
                 raise exception.Error(
-                    '%s not supported' % self._restore_property)
+                    '%s not supported' % self.BACKUP_ID)
             vol_id = cinder.restores.restore(backup_id).volume_id
 
             vol = cinder.volumes.get(vol_id)
@@ -348,45 +346,63 @@ class VolumeAttachment(resource.Resource):
 
 class CinderVolume(Volume):
 
+    PROPERTIES = (
+        AVAILABILITY_ZONE, SIZE, SNAPSHOT_ID, BACKUP_ID, NAME,
+        DESCRIPTION, VOLUME_TYPE, METADATA, IMAGE_REF, IMAGE,
+        SOURCE_VOLID,
+    ) = (
+        'availability_zone', 'size', 'snapshot_id', 'backup_id', 'name',
+        'description', 'volume_type', 'metadata', 'imageRef', 'image',
+        'source_volid',
+    )
+
     properties_schema = {
-        'availability_zone': {
-            'Type': 'String',
-            'Description': _('The availability zone in which the volume '
-                             'will be created.')},
-        'size': {
-            'Type': 'Number',
-            'Description': _('The size of the volume in GB.')},
-        'snapshot_id': {
-            'Type': 'String',
-            'Description': _('If specified, the snapshot to create the '
-                             'volume from.')},
-        'backup_id': {
-            'Type': 'String',
-            'Description': _('If specified, the backup to create the '
-                             'volume from.')},
-        'name': {
-            'Type': 'String',
-            'Description': _('A name used to distinguish the volume.')},
-        'description': {
-            'Type': 'String',
-            'Description': _('A description of the volume.')},
-        'volume_type': {
-            'Type': 'String',
-            'Description': _('If specified, the type of volume to use, '
-                             'mapping to a specific backend.')},
-        'metadata': {
-            'Type': 'Map',
-            'Description': _('Key/value pairs to associate with the volume.')},
-        'imageRef': {
-            'Type': 'String',
-            'Description': _('DEPRECATED: use "image" instead.')},
-        'image': {
-            'Type': 'String',
-            'Description': _('If specified, the name or ID of the image to '
-                             'create the volume from.')},
-        'source_volid': {
-            'Type': 'String',
-            'Description': _('If specified, the volume to use as source.')}
+        AVAILABILITY_ZONE: properties.Schema(
+            properties.Schema.STRING,
+            _('The availability zone in which the volume will be created.')
+        ),
+        SIZE: properties.Schema(
+            properties.Schema.NUMBER,
+            _('The size of the volume in GB.')
+        ),
+        SNAPSHOT_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('If specified, the snapshot to create the volume from.')
+        ),
+        BACKUP_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('If specified, the backup to create the volume from.')
+        ),
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('A name used to distinguish the volume.')
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            _('A description of the volume.')
+        ),
+        VOLUME_TYPE: properties.Schema(
+            properties.Schema.STRING,
+            _('If specified, the type of volume to use, mapping to a '
+              'specific backend.')
+        ),
+        METADATA: properties.Schema(
+            properties.Schema.MAP,
+            _('Key/value pairs to associate with the volume.')
+        ),
+        IMAGE_REF: properties.Schema(
+            properties.Schema.STRING,
+            _('DEPRECATED: use "image" instead.')
+        ),
+        IMAGE: properties.Schema(
+            properties.Schema.STRING,
+            _('If specified, the name or ID of the image to create the '
+              'volume from.')
+        ),
+        SOURCE_VOLID: properties.Schema(
+            properties.Schema.STRING,
+            _('If specified, the volume to use as source.')
+        ),
     }
 
     attributes_schema = {
@@ -406,29 +422,27 @@ class CinderVolume(Volume):
                       'not.'),
     }
 
-    _restore_property = 'backup_id'
-
     _volume_creating_status = ['creating', 'restoring-backup', 'downloading']
 
     def _display_name(self):
-        name = self.properties['name']
+        name = self.properties[self.NAME]
         if name:
             return name
         return super(CinderVolume, self)._display_name()
 
     def _display_description(self):
-        return self.properties['description']
+        return self.properties[self.DESCRIPTION]
 
     def _create_arguments(self):
         arguments = {
-            'size': self.properties['size'],
-            'availability_zone': self.properties['availability_zone']
+            'size': self.properties[self.SIZE],
+            'availability_zone': self.properties[self.AVAILABILITY_ZONE]
         }
-        if self.properties.get('image'):
+        if self.properties.get(self.IMAGE):
             arguments['imageRef'] = nova_utils.get_image_id(
-                self.nova(), self.properties['image'])
-        elif self.properties.get('imageRef'):
-            arguments['imageRef'] = self.properties['imageRef']
+                self.nova(), self.properties[self.IMAGE])
+        elif self.properties.get(self.IMAGE_REF):
+            arguments['imageRef'] = self.properties[self.IMAGE_REF]
 
         optionals = ['snapshot_id', 'volume_type', 'source_volid',
                      'metadata']
