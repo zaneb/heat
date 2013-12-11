@@ -32,35 +32,41 @@ class VPNService(neutron.NeutronResource):
     A resource for VPN service in Neutron.
     """
 
+    PROPERTIES = (
+        NAME, DESCRIPTION, ADMIN_STATE_UP, SUBNET_ID, ROUTER_ID,
+    ) = (
+        'name', 'description', 'admin_state_up', 'subnet_id', 'router_id',
+    )
+
     properties_schema = {
-        'name': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Name for the vpn service.')
-        },
-        'description': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Description for the vpn service.')
-        },
-        'admin_state_up': {
-            'Type': 'Boolean',
-            'Default': True,
-            'UpdateAllowed': True,
-            'Description': _('Administrative state for the vpn service.')
-        },
-        'subnet_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Unique identifier for the subnet in which the '
-                             'vpn service will be created.')
-        },
-        'router_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Unique identifier for the router to which the '
-                             'vpn service will be inserted.')
-        }
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name for the vpn service.'),
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            _('Description for the vpn service.'),
+            update_allowed=True
+        ),
+        ADMIN_STATE_UP: properties.Schema(
+            properties.Schema.BOOLEAN,
+            _('Administrative state for the vpn service.'),
+            default=True,
+            update_allowed=True
+        ),
+        SUBNET_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Unique identifier for the subnet in which the vpn service '
+              'will be created.'),
+            required=True
+        ),
+        ROUTER_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Unique identifier for the router to which the vpn service '
+              'will be inserted.'),
+            required=True
+        ),
     }
 
     attributes_schema = {
