@@ -14,6 +14,7 @@
 
 from heat.engine import clients
 from heat.engine.resources.neutron import neutron
+from heat.engine import properties
 from heat.engine import scheduler
 
 if clients.neutronclient is not None:
@@ -29,16 +30,32 @@ class Firewall(neutron.NeutronResource):
     A resource for the Firewall resource in Neutron FWaaS.
     """
 
-    properties_schema = {'name': {'Type': 'String',
-                                  'UpdateAllowed': True},
-                         'description': {'Type': 'String',
-                                         'UpdateAllowed': True},
-                         'admin_state_up': {'Type': 'Boolean',
-                                            'Default': True,
-                                            'UpdateAllowed': True},
-                         'firewall_policy_id': {'Type': 'String',
-                                                'Required': True,
-                                                'UpdateAllowed': True}}
+    PROPERTIES = (
+        NAME, DESCRIPTION, ADMIN_STATE_UP, FIREWALL_POLICY_ID,
+    ) = (
+        'name', 'description', 'admin_state_up', 'firewall_policy_id',
+    )
+
+    properties_schema = {
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        ADMIN_STATE_UP: properties.Schema(
+            properties.Schema.BOOLEAN,
+            default=True,
+            update_allowed=True
+        ),
+        FIREWALL_POLICY_ID: properties.Schema(
+            properties.Schema.STRING,
+            required=True,
+            update_allowed=True
+        ),
+    }
 
     attributes_schema = {
         'name': _('Name for the Firewall.'),
