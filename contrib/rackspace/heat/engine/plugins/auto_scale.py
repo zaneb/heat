@@ -403,23 +403,29 @@ class WebHook(resource.Resource):
 
     Exposes the URLs of the webhook as attributes.
     """
+    PROPERTIES = (
+        POLICY, NAME, METADATA,
+    ) = (
+        'policy', 'name', 'metadata',
+    )
+
     properties_schema = {
-        'policy': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _(
-                "The policy that this webhook should apply to, in "
-                "{group_id}:{policy_id} format. Generally a Ref to a Policy "
-                "resource.")},
-        'name': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("The name of this webhook.")},
-        'metadata': {
-            'Type': 'Map',
-            'Required': False,
-            'Description': _("Arbitrary key/value metadata for this webhook."),
-        },
+        POLICY: properties.Schema(
+            properties.Schema.STRING,
+            _('The policy that this webhook should apply to, in '
+              '{group_id}:{policy_id} format. Generally a Ref to a Policy '
+              'resource.'),
+            required=True
+        ),
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('The name of this webhook.'),
+            required=True
+        ),
+        METADATA: properties.Schema(
+            properties.Schema.MAP,
+            _('Arbitrary key/value metadata for this webhook.')
+        ),
     }
 
     update_allowed_keys = ('Properties',)
@@ -436,10 +442,10 @@ class WebHook(resource.Resource):
     def _get_args(self, props):
         group_id, policy_id = props['policy'].split(':', 1)
         return dict(
-            name=props['name'],
+            name=props[self.NAME],
             scaling_group=group_id,
             policy=policy_id,
-            metadata=props.get('metadata'))
+            metadata=props.get(self.METADATA))
 
     def handle_create(self):
         asclient = self.stack.clients.auto_scale()
@@ -471,7 +477,7 @@ class WebHook(resource.Resource):
         if self.resource_id is None:
             return
         asclient = self.stack.clients.auto_scale()
-        group_id, policy_id = self.properties['policy'].split(':', 1)
+        group_id, policy_id = self.properties[self.POLICY].split(':', 1)
         try:
             asclient.delete_webhook(group_id, policy_id, self.resource_id)
         except NotFound:
