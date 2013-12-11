@@ -63,34 +63,64 @@ class CooldownMixin(object):
 
 
 class InstanceGroup(stack_resource.StackResource):
-    tags_schema = {'Key': {'Type': 'String',
-                           'Required': True},
-                   'Value': {'Type': 'String',
-                             'Required': True}}
+
+    PROPERTIES = (
+        AVAILABILITY_ZONES, LAUNCH_CONFIGURATION_NAME, SIZE,
+        LOAD_BALANCER_NAMES, TAGS,
+    ) = (
+        'AvailabilityZones', 'LaunchConfigurationName', 'Size',
+        'LoadBalancerNames', 'Tags',
+    )
+
+    _TAG_KEYS = (
+        TAG_KEY, TAG_VALUE,
+    ) = (
+        'Key', 'Value',
+    )
+
     properties_schema = {
-        'AvailabilityZones': {
-            'Required': True,
-            'Type': 'List',
-            'Description': _('Not Implemented.')},
-        'LaunchConfigurationName': {
-            'Required': True,
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Name of LaunchConfiguration resource.')},
-        'Size': {
-            'Required': True,
-            'Type': 'Number',
-            'UpdateAllowed': True,
-            'Description': _('Desired number of instances.')},
-        'LoadBalancerNames': {
-            'Type': 'List',
-            'Description': _('List of LoadBalancer resources.')},
-        'Tags': {
-            'Type': 'List',
-            'Schema': {'Type': 'Map', 'Schema': tags_schema},
-            'Description': _('Tags to attach to this group.')}
+        AVAILABILITY_ZONES: properties.Schema(
+            properties.Schema.LIST,
+            _('Not Implemented.'),
+            required=True
+        ),
+        LAUNCH_CONFIGURATION_NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name of LaunchConfiguration resource.'),
+            required=True,
+            update_allowed=True
+        ),
+        SIZE: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Desired number of instances.'),
+            required=True,
+            update_allowed=True
+        ),
+        LOAD_BALANCER_NAMES: properties.Schema(
+            properties.Schema.LIST,
+            _('List of LoadBalancer resources.')
+        ),
+        TAGS: properties.Schema(
+            properties.Schema.LIST,
+            _('Tags to attach to this group.'),
+            schema=properties.Schema(
+                properties.Schema.MAP,
+                schema={
+                    TAG_KEY: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                    TAG_VALUE: properties.Schema(
+                        properties.Schema.STRING,
+                        required=True
+                    ),
+                },
+            )
+        ),
     }
+
     update_allowed_keys = ('Properties', 'UpdatePolicy',)
+
     attributes_schema = {
         "InstanceList": _("A comma-delimited list of server ip addresses. "
                           "(Heat extension).")
@@ -152,7 +182,7 @@ class InstanceGroup(stack_resource.StackResource):
 
     def handle_create(self):
         """Create a nested stack and add the initial resources to it."""
-        num_instances = int(self.properties['Size'])
+        num_instances = int(self.properties[self.SIZE])
         initial_template = self._create_template(num_instances)
         return self.create_with_template(initial_template, {})
 
@@ -188,7 +218,7 @@ class InstanceGroup(stack_resource.StackResource):
 
             # Replace instances first if launch configuration has changed
             if (self.update_policy['RollingUpdate'] and
-                    'LaunchConfigurationName' in prop_diff):
+                    self.LAUNCH_CONFIGURATION_NAME in prop_diff):
                 policy = self.update_policy['RollingUpdate']
                 self._replace(int(policy['MinInstancesInService']),
                               int(policy['MaxBatchSize']),
@@ -196,29 +226,29 @@ class InstanceGroup(stack_resource.StackResource):
 
             # Get the current capacity, we may need to adjust if
             # Size has changed
-            if 'Size' in prop_diff:
+            if self.SIZE in prop_diff:
                 inst_list = self.get_instances()
-                if len(inst_list) != int(self.properties['Size']):
-                    self.resize(int(self.properties['Size']))
+                if len(inst_list) != int(self.properties[self.SIZE]):
+                    self.resize(int(self.properties[self.SIZE]))
 
     def _tags(self):
         """
         Make sure that we add a tag that Ceilometer can pick up.
         These need to be prepended with 'metering.'.
         """
-        tags = self.properties.get('Tags') or []
+        tags = self.properties.get(self.TAGS) or []
         for t in tags:
-            if t['Key'].startswith('metering.'):
+            if t[self.TAG_KEY].startswith('metering.'):
                 # the user has added one, don't add another.
                 return tags
-        return tags + [{'Key': 'metering.groupname',
-                        'Value': self.FnGetRefId()}]
+        return tags + [{self.TAG_KEY: 'metering.groupname',
+                        self.TAG_VALUE: self.FnGetRefId()}]
 
     def handle_delete(self):
         return self.delete_nested()
 
     def _get_instance_definition(self):
-        conf_name = self.properties['LaunchConfigurationName']
+        conf_name = self.properties[self.LAUNCH_CONFIGURATION_NAME]
         conf = self.stack.resource_by_refid(conf_name)
         instance_definition = copy.deepcopy(conf.t)
         instance_definition['Type'] = 'AWS::EC2::Instance'
@@ -331,10 +361,10 @@ class InstanceGroup(stack_resource.StackResource):
         This must be done after activation (instance in ACTIVE state),
         otherwise the instances' IP addresses may not be available.
         '''
-        if self.properties['LoadBalancerNames']:
+        if self.properties[self.LOAD_BALANCER_NAMES]:
             id_list = [inst.FnGetRefId() for inst in self.get_instances()
                        if inst.FnGetRefId() not in exclude]
-            for lb in self.properties['LoadBalancerNames']:
+            for lb in self.properties[self.LOAD_BALANCER_NAMES]:
                 lb_resource = self.stack[lb]
                 if 'Instances' in lb_resource.properties_schema:
                     lb_resource.json_snippet['Properties']['Instances'] = (
