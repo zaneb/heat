@@ -15,6 +15,8 @@
 
 from heat.engine import clients
 from heat.engine.resources.neutron import neutron
+from heat.engine import constraints
+from heat.engine import properties
 from heat.engine import scheduler
 
 if clients.neutronclient is not None:
@@ -391,69 +393,94 @@ class IPsecPolicy(neutron.NeutronResource):
     A resource for IPsec policy in Neutron.
     """
 
-    lifetime_schema = {
-        'units': {
-            'Type': 'String',
-            'AllowedValues': ['seconds', 'kilobytes'],
-            'Default': 'seconds',
-            'Description': _('Safety assessment lifetime units.')
-        },
-        'value': {
-            'Type': 'Integer',
-            'Default': 3600,
-            'Description': _('Safety assessment lifetime value in specified '
-                             'units.')
-        },
-    }
+    PROPERTIES = (
+        NAME, DESCRIPTION, TRANSFORM_PROTOCOL, ENCAPSULATION_MODE,
+        AUTH_ALGORITHM, ENCRYPTION_ALGORITHM, LIFETIME, PFS,
+    ) = (
+        'name', 'description', 'transform_protocol', 'encapsulation_mode',
+        'auth_algorithm', 'encryption_algorithm', 'lifetime', 'pfs',
+    )
+
+    _LIFETIME_KEYS = (
+        LIFETIME_UNITS, LIFETIME_VALUE,
+    ) = (
+        'units', 'value',
+    )
 
     properties_schema = {
-        'name': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Name for the ipsec policy.')
-        },
-        'description': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Description for the ipsec policy.')
-        },
-        'transform_protocol': {
-            'Type': 'String',
-            'AllowedValues': ['esp', 'ah', 'ah-esp'],
-            'Default': 'esp',
-            'Description': _('Transform protocol for the ipsec policy.')
-        },
-        'encapsulation_mode': {
-            'Type': 'String',
-            'AllowedValues': ['tunnel', 'transport'],
-            'Default': 'tunnel',
-            'Description': _('Encapsulation mode for the ipsec policy.')
-        },
-        'auth_algorithm': {
-            'Type': 'String',
-            'AllowedValues': ['sha1'],
-            'Default': 'sha1',
-            'Description': _('Authentication hash algorithm for the ipsec '
-                             'policy.')
-        },
-        'encryption_algorithm': {
-            'Type': 'String',
-            'AllowedValues': ['3des', 'aes-128', 'aes-192', 'aes-256'],
-            'Default': 'aes-128',
-            'Description': _('Encryption algorithm for the ipsec policy.')
-        },
-        'lifetime': {
-            'Type': 'Map',
-            'Schema': lifetime_schema,
-            'Description': _('Safety assessment lifetime configuration for '
-                             'the ipsec policy.')
-        },
-        'pfs': {
-            'Type': 'String',
-            'AllowedValues': ['group2', 'group5', 'group14'],
-            'Default': 'group5',
-            'Description': _('Perfect forward secrecy for the ipsec policy.')
-        }
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name for the ipsec policy.'),
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            _('Description for the ipsec policy.'),
+            update_allowed=True
+        ),
+        TRANSFORM_PROTOCOL: properties.Schema(
+            properties.Schema.STRING,
+            _('Transform protocol for the ipsec policy.'),
+            default='esp',
+            constraints=[
+                constraints.AllowedValues(['esp', 'ah', 'ah-esp']),
+            ]
+        ),
+        ENCAPSULATION_MODE: properties.Schema(
+            properties.Schema.STRING,
+            _('Encapsulation mode for the ipsec policy.'),
+            default='tunnel',
+            constraints=[
+                constraints.AllowedValues(['tunnel', 'transport']),
+            ]
+        ),
+        AUTH_ALGORITHM: properties.Schema(
+            properties.Schema.STRING,
+            _('Authentication hash algorithm for the ipsec policy.'),
+            default='sha1',
+            constraints=[
+                constraints.AllowedValues(['sha1']),
+            ]
+        ),
+        ENCRYPTION_ALGORITHM: properties.Schema(
+            properties.Schema.STRING,
+            _('Encryption algorithm for the ipsec policy.'),
+            default='aes-128',
+            constraints=[
+                constraints.AllowedValues(['3des', 'aes-128', 'aes-192',
+                                           'aes-256']),
+            ]
+        ),
+        LIFETIME: properties.Schema(
+            properties.Schema.MAP,
+            _('Safety assessment lifetime configuration for the ipsec '
+              'policy.'),
+            schema={
+                LIFETIME_UNITS: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Safety assessment lifetime units.'),
+                    default='seconds',
+                    constraints=[
+                        constraints.AllowedValues(['seconds',
+                                                   'kilobytes']),
+                    ]
+                ),
+                LIFETIME_VALUE: properties.Schema(
+                    properties.Schema.INTEGER,
+                    _('Safety assessment lifetime value in specified '
+                      'units.'),
+                    default=3600
+                ),
+            }
+        ),
+        PFS: properties.Schema(
+            properties.Schema.STRING,
+            _('Perfect forward secrecy for the ipsec policy.'),
+            default='group5',
+            constraints=[
+                constraints.AllowedValues(['group2', 'group5', 'group14']),
+            ]
+        ),
     }
 
     attributes_schema = {
