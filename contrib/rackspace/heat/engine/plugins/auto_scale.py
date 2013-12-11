@@ -18,6 +18,8 @@ Resources for Rackspace Auto Scale.
 
 import copy
 
+from heat.engine import constraints
+from heat.engine import properties
 from heat.engine import resource
 from heat.db.sqlalchemy import api as db_api
 from heat.common import exception
@@ -281,53 +283,61 @@ class Group(resource.Resource):
 
 class ScalingPolicy(resource.Resource):
     """Represents a Rackspace Auto Scale scaling policy."""
+
+    PROPERTIES = (
+        GROUP, NAME, CHANGE, CHANGE_PERCENT, DESIRED_CAPACITY,
+        COOLDOWN, TYPE, ARGS,
+    ) = (
+        'group', 'name', 'change', 'changePercent', 'desiredCapacity',
+        'cooldown', 'type', 'args',
+    )
+
     properties_schema = {
         # group isn't in the post body, but it's in the URL to post to.
-        'group': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("Scaling group ID that this policy "
-                             "belongs to.")},
-        'name': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _("Name of this scaling policy.")},
-        'change': {
-            'Type': 'Number',
-            'Required': False,
-            'Description': _(
-                "Amount to add to or remove from current number of instances. "
-                "Incompatible with changePercent and desiredCapacity.")},
-        'changePercent': {
-            'Type': 'Number',
-            'Required': False,
-            'Description': _(
-                "Percentage-based change to add or remove from current number "
-                "of instances. Incompatible with change and desiredCapacity.")
-        },
-        'desiredCapacity': {
-            'Type': 'Number',
-            'Required': False,
-            'Description': _(
-                "Absolute number to set the number of instances to. "
-                "Incompatible with change and changePercent.")},
-        'cooldown': {
-            'Type': 'Number',
-            'Required': False,
-            'Description': _(
-                "Number of seconds after a policy execution during which "
-                "further executions are disabled.")},
-        'type': {
-            'Type': 'String',
-            'Required': True,
-            'AllowedValues': ['webhook', 'schedule', 'cloud_monitoring'],
-            'Description': _(
-                "Type of this scaling policy. Specifies how the policy is "
-                "executed.")},
-        'args': {
-            'Type': 'Map',
-            'Required': False,
-            'Description': _("Type-specific arguments for the policy.")},
+        GROUP: properties.Schema(
+            properties.Schema.STRING,
+            _('Scaling group ID that this policy belongs to.'),
+            required=True
+        ),
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name of this scaling policy.'),
+            required=True
+        ),
+        CHANGE: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Amount to add to or remove from current number of instances. '
+              'Incompatible with changePercent and desiredCapacity.')
+        ),
+        CHANGE_PERCENT: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Percentage-based change to add or remove from current number '
+              'of instances. Incompatible with change and desiredCapacity.')
+        ),
+        DESIRED_CAPACITY: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Absolute number to set the number of instances to. '
+              'Incompatible with change and changePercent.')
+        ),
+        COOLDOWN: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Number of seconds after a policy execution during which '
+              'further executions are disabled.')
+        ),
+        TYPE: properties.Schema(
+            properties.Schema.STRING,
+            _('Type of this scaling policy. Specifies how the policy is '
+              'executed.'),
+            required=True,
+            constraints=[
+                constraints.AllowedValues(['webhook', 'schedule',
+                                           'cloud_monitoring']),
+            ]
+        ),
+        ARGS: properties.Schema(
+            properties.Schema.MAP,
+            _('Type-specific arguments for the policy.')
+        ),
     }
 
     update_allowed_keys = ('Properties',)
@@ -339,20 +349,20 @@ class ScalingPolicy(resource.Resource):
     def _get_args(self, properties):
         """Get pyrax-style create arguments for scaling policies."""
         args = dict(
-            scaling_group=properties['group'],
-            name=properties['name'],
-            policy_type=properties['type'],
-            cooldown=properties['cooldown'],
+            scaling_group=properties[self.GROUP],
+            name=properties[self.NAME],
+            policy_type=properties[self.TYPE],
+            cooldown=properties[self.COOLDOWN],
         )
-        if properties.get('change') is not None:
-            args['change'] = properties['change']
-        elif properties.get('changePercent') is not None:
-            args['change'] = properties['changePercent']
+        if properties.get(self.CHANGE) is not None:
+            args['change'] = properties[self.CHANGE]
+        elif properties.get(self.CHANGE_PERCENT) is not None:
+            args['change'] = properties[self.CHANGE_PERCENT]
             args['is_percent'] = True
-        elif properties.get('desiredCapacity') is not None:
-            args['desired_capacity'] = properties['desiredCapacity']
-        if properties.get('args') is not None:
-            args['args'] = properties['args']
+        elif properties.get(self.DESIRED_CAPACITY) is not None:
+            args['desired_capacity'] = properties[self.DESIRED_CAPACITY]
+        if properties.get(self.ARGS) is not None:
+            args['args'] = properties[self.ARGS]
         return args
 
     def handle_create(self):
@@ -363,7 +373,7 @@ class ScalingPolicy(resource.Resource):
         asclient = self.stack.clients.auto_scale()
         args = self._get_args(self.properties)
         policy = asclient.add_policy(**args)
-        resource_id = '%s:%s' % (self.properties['group'], policy.id)
+        resource_id = '%s:%s' % (self.properties[self.GROUP], policy.id)
         self.resource_id_set(resource_id)
 
     def _get_policy_id(self):
@@ -382,7 +392,7 @@ class ScalingPolicy(resource.Resource):
             return
         policy_id = self._get_policy_id()
         try:
-            asclient.delete_policy(self.properties['group'], policy_id)
+            asclient.delete_policy(self.properties[self.GROUP], policy_id)
         except NotFound:
             pass
 
