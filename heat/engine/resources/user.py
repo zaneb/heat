@@ -15,6 +15,8 @@
 
 from heat.common import exception
 from heat.engine import clients
+from heat.engine import constraints
+from heat.engine import properties
 from heat.engine import resource
 
 from heat.openstack.common import log as logging
@@ -135,21 +137,32 @@ class User(resource.Resource):
 
 
 class AccessKey(resource.Resource):
+    PROPERTIES = (
+        SERIAL, USER_NAME, STATUS,
+    ) = (
+        'Serial', 'UserName', 'Status',
+    )
+
     properties_schema = {
-        'Serial': {
-            'Type': 'Integer',
-            'Implemented': False,
-            'Description': _('Not Implemented.')},
-        'UserName': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('The name of the user that the new key will'
-                             ' belong to.')},
-        'Status': {
-            'Type': 'String',
-            'Implemented': False,
-            'AllowedValues': ['Active', 'Inactive'],
-            'Description': _('Not Implemented.')}}
+        SERIAL: properties.Schema(
+            properties.Schema.INTEGER,
+            _('Not Implemented.'),
+            implemented=False
+        ),
+        USER_NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('The name of the user that the new key will belong to.'),
+            required=True
+        ),
+        STATUS: properties.Schema(
+            properties.Schema.STRING,
+            _('Not Implemented.'),
+            constraints=[
+                constraints.AllowedValues(['Active', 'Inactive']),
+            ],
+            implemented=False
+        ),
+    }
 
     def __init__(self, name, json_snippet, stack):
         super(AccessKey, self).__init__(name, json_snippet, stack)
@@ -167,13 +180,13 @@ class AccessKey(resource.Resource):
         # into the UserName parameter.  Would be cleaner to just make the User
         # resource return resource_id for FnGetRefId but the AWS definition of
         # user does say it returns a user name not ID
-        return self.stack.resource_by_refid(self.properties['UserName'])
+        return self.stack.resource_by_refid(self.properties[self.USER_NAME])
 
     def handle_create(self):
         user = self._get_user()
         if user is None:
             raise exception.NotFound(_('could not find user %s') %
-                                     self.properties['UserName'])
+                                     self.properties[self.USER_NAME])
 
         kp = self.keystone().get_ec2_keypair(user.resource_id)
         if not kp:
@@ -209,7 +222,7 @@ class AccessKey(resource.Resource):
             if not self.resource_id:
                 logger.warn(_('could not get secret for %(username)s '
                             'Error:%(msg)s') % {
-                            'username': self.properties['UserName'],
+                            'username': self.properties[self.USER_NAME],
                             'msg': "resource_id not yet set"})
             else:
                 try:
@@ -218,7 +231,7 @@ class AccessKey(resource.Resource):
                 except Exception as ex:
                     logger.warn(_('could not get secret for %(username)s '
                                 'Error:%(msg)s') % {
-                                'username': self.properties['UserName'],
+                                'username': self.properties[self.USER_NAME],
                                 'msg': str(ex)})
                 else:
                     if kp.access == self.resource_id:
@@ -235,7 +248,7 @@ class AccessKey(resource.Resource):
         res = None
         log_res = None
         if key == 'UserName':
-            res = self.properties['UserName']
+            res = self.properties[self.USER_NAME]
             log_res = res
         elif key == 'SecretAccessKey':
             res = self._secret_accesskey()
