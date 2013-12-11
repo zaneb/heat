@@ -103,19 +103,37 @@ class FirewallPolicy(neutron.NeutronResource):
     A resource for the FirewallPolicy resource in Neutron FWaaS.
     """
 
-    properties_schema = {'name': {'Type': 'String',
-                                  'UpdateAllowed': True},
-                         'description': {'Type': 'String',
-                                         'UpdateAllowed': True},
-                         'shared': {'Type': 'Boolean',
-                                    'Default': False,
-                                    'UpdateAllowed': True},
-                         'audited': {'Type': 'Boolean',
-                                     'Default': False,
-                                     'UpdateAllowed': True},
-                         'firewall_rules': {'Type': 'List',
-                                            'Required': True,
-                                            'UpdateAllowed': True}}
+    PROPERTIES = (
+        NAME, DESCRIPTION, SHARED, AUDITED, FIREWALL_RULES,
+    ) = (
+        'name', 'description', 'shared', 'audited', 'firewall_rules',
+    )
+
+    properties_schema = {
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            update_allowed=True
+        ),
+        SHARED: properties.Schema(
+            properties.Schema.BOOLEAN,
+            default=False,
+            update_allowed=True
+        ),
+        AUDITED: properties.Schema(
+            properties.Schema.BOOLEAN,
+            default=False,
+            update_allowed=True
+        ),
+        FIREWALL_RULES: properties.Schema(
+            properties.Schema.LIST,
+            required=True,
+            update_allowed=True
+        ),
+    }
 
     attributes_schema = {
         'name': _('Name for the FirewallPolicy.'),
