@@ -417,31 +417,41 @@ class LoadBalancer(resource.Resource):
     A resource to link a neutron pool with servers.
     """
 
+    PROPERTIES = (
+        POOL_ID, PROTOCOL_PORT, MEMBERS,
+    ) = (
+        'pool_id', 'protocol_port', 'members',
+    )
+
     properties_schema = {
-        'pool_id': {
-            'Type': 'String', 'Required': True,
-            'UpdateAllowed': True,
-            'Description': _('The ID of the load balancing pool.')},
-        'protocol_port': {
-            'Type': 'Integer', 'Required': True,
-            'Description': _('Port number on which the servers are '
-                             'running on the members.')},
-        'members': {
-            'Type': 'List',
-            'Default': [],
-            'UpdateAllowed': True,
-            'Description': _('The list of Nova server IDs load balanced.')},
+        POOL_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The ID of the load balancing pool.'),
+            required=True,
+            update_allowed=True
+        ),
+        PROTOCOL_PORT: properties.Schema(
+            properties.Schema.INTEGER,
+            _('Port number on which the servers are running on the members.'),
+            required=True
+        ),
+        MEMBERS: properties.Schema(
+            properties.Schema.LIST,
+            _('The list of Nova server IDs load balanced.'),
+            default=[],
+            update_allowed=True
+        ),
     }
 
     update_allowed_keys = ('Properties',)
 
     def handle_create(self):
-        pool = self.properties['pool_id']
+        pool = self.properties[self.POOL_ID]
         client = self.neutron()
         nova_client = self.nova()
-        protocol_port = self.properties['protocol_port']
+        protocol_port = self.properties[self.PROTOCOL_PORT]
 
-        for member in self.properties.get('members'):
+        for member in self.properties.get(self.MEMBERS):
             address = nova_utils.server_to_ipaddress(nova_client, member)
             lb_member = client.create_member({
                 'member': {
@@ -464,9 +474,9 @@ class LoadBalancer(resource.Resource):
                     if ex.status_code != 404:
                         raise ex
                 db_api.resource_data_delete(self, member)
-            pool = self.properties['pool_id']
+            pool = self.properties[self.POOL_ID]
             nova_client = self.nova()
-            protocol_port = self.properties['protocol_port']
+            protocol_port = self.properties[self.PROTOCOL_PORT]
             for member in members - old_members:
                 address = nova_utils.server_to_ipaddress(nova_client, member)
                 lb_member = client.create_member({
@@ -478,7 +488,7 @@ class LoadBalancer(resource.Resource):
 
     def handle_delete(self):
         client = self.neutron()
-        for member in self.properties.get('members'):
+        for member in self.properties.get(self.MEMBERS):
             member_id = db_api.resource_data_get(self, member)
             try:
                 client.delete_member(member_id)
