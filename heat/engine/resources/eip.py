@@ -149,52 +149,61 @@ class ElasticIp(resource.Resource):
 
 
 class ElasticIpAssociation(resource.Resource):
+    PROPERTIES = (
+        INSTANCE_ID, EIP, ALLOCATION_ID, NETWORK_INTERFACE_ID,
+    ) = (
+        'InstanceId', 'EIP', 'AllocationId', 'NetworkInterfaceId',
+    )
+
     properties_schema = {
-        'InstanceId': {
-            'Type': 'String',
-            'Required': False,
-            'Description': _('Instance ID to associate with EIP specified by '
-                             'EIP property.')},
-        'EIP': {
-            'Type': 'String',
-            'Description': _('EIP address to associate with instance.')},
-        'AllocationId': {
-            'Type': 'String',
-            'Description': _('Allocation ID for VPC EIP address.')},
-        'NetworkInterfaceId': {
-            'Type': 'String',
-            'Description': _('Network interface ID to associate with EIP.')}}
+        INSTANCE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Instance ID to associate with EIP specified by EIP property.')
+        ),
+        EIP: properties.Schema(
+            properties.Schema.STRING,
+            _('EIP address to associate with instance.')
+        ),
+        ALLOCATION_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Allocation ID for VPC EIP address.')
+        ),
+        NETWORK_INTERFACE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Network interface ID to associate with EIP.')
+        ),
+    }
 
     def FnGetRefId(self):
         return unicode(self.physical_resource_name())
 
     def handle_create(self):
         """Add a floating IP address to a server."""
-        if self.properties['EIP'] is not None \
-                and self.properties['AllocationId'] is not None:
+        if self.properties[self.EIP] is not None \
+                and self.properties[self.ALLOCATION_ID] is not None:
                     raise exception.ResourcePropertyConflict('EIP',
                                                              'AllocationId')
 
-        if self.properties['EIP']:
-            if not self.properties['InstanceId']:
+        if self.properties[self.EIP]:
+            if not self.properties[self.INSTANCE_ID]:
                 logger.warn(_('Skipping association, InstanceId not '
                             'specified'))
                 return
-            server = self.nova().servers.get(self.properties['InstanceId'])
-            server.add_floating_ip(self.properties['EIP'])
-            self.resource_id_set(self.properties['EIP'])
+            server = self.nova().servers.get(self.properties[self.INSTANCE_ID])
+            server.add_floating_ip(self.properties[self.EIP])
+            self.resource_id_set(self.properties[self.EIP])
             logger.debug('ElasticIpAssociation %s.add_floating_ip(%s)' %
-                         (self.properties['InstanceId'],
-                          self.properties['EIP']))
-        elif self.properties['AllocationId']:
+                         (self.properties[self.INSTANCE_ID],
+                          self.properties[self.EIP]))
+        elif self.properties[self.ALLOCATION_ID]:
             assert clients.neutronclient, "Neutron required for VPC operations"
             port_id = None
             port_rsrc = None
-            if self.properties['NetworkInterfaceId']:
-                port_id = self.properties['NetworkInterfaceId']
+            if self.properties[self.NETWORK_INTERFACE_ID]:
+                port_id = self.properties[self.NETWORK_INTERFACE_ID]
                 port_rsrc = self.neutron().list_ports(id=port_id)['ports'][0]
-            elif self.properties['InstanceId']:
-                instance_id = self.properties['InstanceId']
+            elif self.properties[self.INSTANCE_ID]:
+                instance_id = self.properties[self.INSTANCE_ID]
                 ports = self.neutron().list_ports(device_id=instance_id)
                 port_rsrc = ports['ports'][0]
                 port_id = port_rsrc['id']
@@ -202,7 +211,7 @@ class ElasticIpAssociation(resource.Resource):
                 logger.warn(_('Skipping association, resource not specified'))
                 return
 
-            float_id = self.properties['AllocationId']
+            float_id = self.properties[self.ALLOCATION_ID]
             self.resource_id_set(float_id)
 
             # assuming only one fixed_ip
@@ -224,15 +233,16 @@ class ElasticIpAssociation(resource.Resource):
 
     def handle_delete(self):
         """Remove a floating IP address from a server or port."""
-        if self.properties['EIP']:
+        if self.properties[self.EIP]:
             try:
-                server = self.nova().servers.get(self.properties['InstanceId'])
+                instance_id = self.properties[self.INSTANCE_ID]
+                server = self.nova().servers.get(instance_id)
                 if server:
-                    server.remove_floating_ip(self.properties['EIP'])
+                    server.remove_floating_ip(self.properties[self.EIP])
             except clients.novaclient.exceptions.NotFound as ex:
                 pass
-        elif self.properties['AllocationId']:
-            float_id = self.properties['AllocationId']
+        elif self.properties[self.ALLOCATION_ID]:
+            float_id = self.properties[self.ALLOCATION_ID]
             ne = clients.neutronclient.exceptions.NeutronClientException
             try:
                 self.neutron().update_floatingip(
