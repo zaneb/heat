@@ -31,20 +31,41 @@ logger = logging.getLogger(__name__)
 
 
 class User(resource.Resource):
+    PROPERTIES = (
+        PATH, GROUPS, LOGIN_PROFILE, POLICIES,
+    ) = (
+        'Path', 'Groups', 'LoginProfile', 'Policies',
+    )
+
+    _LOGIN_PROFILE_KEYS = (
+        LOGIN_PROFILE_PASSWORD,
+    ) = (
+        'Password',
+    )
+
     properties_schema = {
-        'Path': {
-            'Type': 'String',
-            'Description': _('Not Implemented.')},
-        'Groups': {
-            'Type': 'List',
-            'Description': _('Not Implemented.')},
-        'LoginProfile': {
-            'Type': 'Map',
-            'Schema': {'Password': {'Type': 'String'}},
-            'Description': _('A login profile for the user.')},
-        'Policies': {
-            'Type': 'List',
-            'Description': _('Access policies to apply to the user.')}}
+        PATH: properties.Schema(
+            properties.Schema.STRING,
+            _('Not Implemented.')
+        ),
+        GROUPS: properties.Schema(
+            properties.Schema.LIST,
+            _('Not Implemented.')
+        ),
+        LOGIN_PROFILE: properties.Schema(
+            properties.Schema.MAP,
+            _('A login profile for the user.'),
+            schema={
+                LOGIN_PROFILE_PASSWORD: properties.Schema(
+                    properties.Schema.STRING
+                ),
+            }
+        ),
+        POLICIES: properties.Schema(
+            properties.Schema.LIST,
+            _('Access policies to apply to the user.')
+        ),
+    }
 
     def _validate_policies(self, policies):
         for policy in (policies or []):
@@ -78,14 +99,14 @@ class User(resource.Resource):
 
     def handle_create(self):
         passwd = ''
-        if self.properties['LoginProfile'] and \
-                'Password' in self.properties['LoginProfile']:
-                passwd = self.properties['LoginProfile']['Password']
+        profile = self.properties[self.LOGIN_PROFILE]
+        if profile and self.LOGIN_PROFILE_PASSWORD in profile:
+            passwd = profile[self.LOGIN_PROFILE_PASSWORD]
 
-        if self.properties['Policies']:
-            if not self._validate_policies(self.properties['Policies']):
+        if self.properties[self.POLICIES]:
+            if not self._validate_policies(self.properties[self.POLICIES]):
                 raise exception.InvalidTemplateAttribute(resource=self.name,
-                                                         key='Policies')
+                                                         key=self.POLICIES)
 
         uid = self.keystone().create_stack_user(self.physical_resource_name(),
                                                 passwd)
@@ -124,7 +145,7 @@ class User(resource.Resource):
             resource=self.name, key=key)
 
     def access_allowed(self, resource_name):
-        policies = (self.properties['Policies'] or [])
+        policies = (self.properties[self.POLICIES] or [])
         for policy in policies:
             if not isinstance(policy, basestring):
                 logger.warning(_("Ignoring policy %s, must be string "
