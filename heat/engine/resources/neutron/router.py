@@ -16,6 +16,7 @@
 from heat.common import exception
 from heat.engine import clients
 from heat.engine.resources.neutron import neutron
+from heat.engine import properties
 from heat.engine import scheduler
 
 if clients.neutronclient is not None:
@@ -136,10 +137,22 @@ class RouterInterface(neutron.NeutronResource):
 
 
 class RouterGateway(neutron.NeutronResource):
-    properties_schema = {'router_id': {'Type': 'String',
-                                       'Required': True},
-                         'network_id': {'Type': 'String',
-                                        'Required': True}}
+    PROPERTIES = (
+        ROUTER_ID, NETWORK_ID,
+    ) = (
+        'router_id', 'network_id',
+    )
+
+    properties_schema = {
+        ROUTER_ID: properties.Schema(
+            properties.Schema.STRING,
+            required=True
+        ),
+        NETWORK_ID: properties.Schema(
+            properties.Schema.STRING,
+            required=True
+        ),
+    }
 
     def add_dependencies(self, deps):
         super(RouterGateway, self).add_dependencies(deps)
@@ -148,22 +161,22 @@ class RouterGateway(neutron.NeutronResource):
             # router_id as this router_id
             if (resource.has_interface('OS::Neutron::RouterInterface') and
                 resource.properties.get('router_id') ==
-                    self.properties.get('router_id')):
+                    self.properties.get(self.ROUTER_ID)):
                         deps += (self, resource)
             # depend on any subnet in this template with the same network_id
             # as this network_id, as the gateway implicitly creates a port
             # on that subnet
             elif (resource.has_interface('OS::Neutron::Subnet') and
                   resource.properties.get('network_id') ==
-                    self.properties.get('network_id')):
+                    self.properties.get(self.NETWORK_ID)):
                         deps += (self, resource)
 
     def handle_create(self):
-        router_id = self.properties.get('router_id')
+        router_id = self.properties.get(self.ROUTER_ID)
         network_id = neutronV20.find_resourceid_by_name_or_id(
             self.neutron(),
             'network',
-            self.properties.get('network_id'))
+            self.properties.get(self.NETWORK_ID))
         self.neutron().add_gateway_router(
             router_id,
             {'network_id': network_id})
