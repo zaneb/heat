@@ -15,6 +15,7 @@
 
 from heat.engine import clients
 from heat.openstack.common import log as logging
+from heat.engine import properties
 from heat.engine import resource
 from heat.engine.resources.neutron import neutron
 from heat.engine.resources.vpc import VPC
@@ -109,22 +110,30 @@ class RouteTable(resource.Resource):
 
 class SubnetRouteTableAssocation(resource.Resource):
 
+    PROPERTIES = (
+        ROUTE_TABLE_ID, SUBNET_ID,
+    ) = (
+        'RouteTableId', 'SubnetId',
+    )
+
     properties_schema = {
-        'RouteTableId': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Route table ID.')},
-        'SubnetId': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Subnet ID.')}
+        ROUTE_TABLE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Route table ID.'),
+            required=True
+        ),
+        SUBNET_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Subnet ID.'),
+            required=True
+        ),
     }
 
     def handle_create(self):
         client = self.neutron()
-        subnet_id = self.properties.get('SubnetId')
+        subnet_id = self.properties.get(self.SUBNET_ID)
 
-        router_id = self.properties.get('RouteTableId')
+        router_id = self.properties.get(self.ROUTE_TABLE_ID)
 
         #remove the default router association for this subnet.
         try:
@@ -149,9 +158,9 @@ class SubnetRouteTableAssocation(resource.Resource):
 
     def handle_delete(self):
         client = self.neutron()
-        subnet_id = self.properties.get('SubnetId')
+        subnet_id = self.properties.get(self.SUBNET_ID)
 
-        router_id = self.properties.get('RouteTableId')
+        router_id = self.properties.get(self.ROUTE_TABLE_ID)
 
         try:
             client.remove_interface_router(router_id, {
