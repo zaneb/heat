@@ -691,31 +691,46 @@ class LaunchConfiguration(resource.Resource):
 
 
 class ScalingPolicy(signal_responder.SignalResponder, CooldownMixin):
+    PROPERTIES = (
+        AUTO_SCALING_GROUP_NAME, SCALING_ADJUSTMENT, ADJUSTMENT_TYPE,
+        COOLDOWN,
+    ) = (
+        'AutoScalingGroupName', 'ScalingAdjustment', 'AdjustmentType',
+        'Cooldown',
+    )
+
     properties_schema = {
-        'AutoScalingGroupName': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('AutoScaling group name to apply policy to.')},
-        'ScalingAdjustment': {
-            'Type': 'Number',
-            'Required': True,
-            'UpdateAllowed': True,
-            'Description': _('Size of adjustment.')},
-        'AdjustmentType': {
-            'Type': 'String',
-            'AllowedValues': ['ChangeInCapacity',
-                              'ExactCapacity',
-                              'PercentChangeInCapacity'],
-            'Required': True,
-            'UpdateAllowed': True,
-            'Description': _('Type of adjustment (absolute or percentage).')},
-        'Cooldown': {
-            'Type': 'Number',
-            'UpdateAllowed': True,
-            'Description': _('Cooldown period, in seconds.')},
+        AUTO_SCALING_GROUP_NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('AutoScaling group name to apply policy to.'),
+            required=True
+        ),
+        SCALING_ADJUSTMENT: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Size of adjustment.'),
+            required=True,
+            update_allowed=True
+        ),
+        ADJUSTMENT_TYPE: properties.Schema(
+            properties.Schema.STRING,
+            _('Type of adjustment (absolute or percentage).'),
+            required=True,
+            constraints=[
+                constraints.AllowedValues(['ChangeInCapacity',
+                                           'ExactCapacity',
+                                           'PercentChangeInCapacity']),
+            ],
+            update_allowed=True
+        ),
+        COOLDOWN: properties.Schema(
+            properties.Schema.NUMBER,
+            _('Cooldown period, in seconds.'),
+            update_allowed=True
+        ),
     }
 
     update_allowed_keys = ('Properties',)
+
     attributes_schema = {
         "AlarmUrl": _("A signed url to handle the alarm. "
                       "(Heat extension).")
@@ -756,22 +771,22 @@ class ScalingPolicy(signal_responder.SignalResponder, CooldownMixin):
             logger.info(_("%(name)s NOT performing scaling action, "
                         "cooldown %(cooldown)s") % {
                         'name': self.name,
-                        'cooldown': self.properties['Cooldown']})
+                        'cooldown': self.properties[self.COOLDOWN]})
             return
 
-        asgn_id = self.properties['AutoScalingGroupName']
+        asgn_id = self.properties[self.AUTO_SCALING_GROUP_NAME]
         group = self.stack.resource_by_refid(asgn_id)
 
         logger.info(_('%(name)s Alarm, adjusting Group %(group)s '
                     'by %(filter)s') % {
                     'name': self.name, 'group': group.name,
-                    'filter': self.properties['ScalingAdjustment']})
-        group.adjust(int(self.properties['ScalingAdjustment']),
-                     self.properties['AdjustmentType'])
+                    'filter': self.properties[self.SCALING_ADJUSTMENT]})
+        group.adjust(int(self.properties[self.SCALING_ADJUSTMENT]),
+                     self.properties[self.ADJUSTMENT_TYPE])
 
         self._cooldown_timestamp("%s : %s" %
-                                 (self.properties['AdjustmentType'],
-                                  self.properties['ScalingAdjustment']))
+                                 (self.properties[self.ADJUSTMENT_TYPE],
+                                  self.properties[self.SCALING_ADJUSTMENT]))
 
     def _resolve_attribute(self, name):
         '''
