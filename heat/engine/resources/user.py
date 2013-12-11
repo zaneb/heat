@@ -287,15 +287,23 @@ class AccessKey(resource.Resource):
 
 
 class AccessPolicy(resource.Resource):
+    PROPERTIES = (
+        ALLOWED_RESOURCES,
+    ) = (
+        'AllowedResources',
+    )
+
     properties_schema = {
-        'AllowedResources': {
-            'Type': 'List',
-            'Required': True,
-            'Description': _('Resources that users are allowed to access by'
-                             ' the DescribeStackResource API.')}}
+        ALLOWED_RESOURCES: properties.Schema(
+            properties.Schema.LIST,
+            _('Resources that users are allowed to access by the '
+              'DescribeStackResource API.'),
+            required=True
+        ),
+    }
 
     def handle_create(self):
-        resources = self.properties['AllowedResources']
+        resources = self.properties[self.ALLOWED_RESOURCES]
         # All of the provided resource names must exist in this stack
         for resource in resources:
             if resource not in self.stack:
@@ -305,7 +313,7 @@ class AccessPolicy(resource.Resource):
                                                  stack_name=self.stack.name)
 
     def access_allowed(self, resource_name):
-        return resource_name in self.properties['AllowedResources']
+        return resource_name in self.properties[self.ALLOWED_RESOURCES]
 
 
 def resource_mapping():
