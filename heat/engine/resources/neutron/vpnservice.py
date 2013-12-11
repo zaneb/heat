@@ -117,103 +117,119 @@ class IPsecSiteConnection(neutron.NeutronResource):
     A resource for IPsec site connection in Neutron.
     """
 
-    dpd_schema = {
-        'actions': {
-            'Type': 'String',
-            'AllowedValues': ['clear', 'disabled', 'hold', 'restart',
-                              'restart-by-peer'],
-            'Default': 'hold',
-            'Description': _('Controls DPD protocol mode.')
-        },
-        'interval': {
-            'Type': 'Integer',
-            'Default': 30,
-            'Description': _('Number of seconds for the DPD delay.')
-        },
-        'timeout': {
-            'Type': 'Integer',
-            'Default': 120,
-            'Description': _('Number of seconds for the DPD timeout.')
-        },
-    }
+    PROPERTIES = (
+        NAME, DESCRIPTION, PEER_ADDRESS, PEER_ID, PEER_CIDRS, MTU,
+        DPD, PSK, INITIATOR, ADMIN_STATE_UP, IKEPOLICY_ID,
+        IPSECPOLICY_ID, VPNSERVICE_ID,
+    ) = (
+        'name', 'description', 'peer_address', 'peer_id', 'peer_cidrs', 'mtu',
+        'dpd', 'psk', 'initiator', 'admin_state_up', 'ikepolicy_id',
+        'ipsecpolicy_id', 'vpnservice_id',
+    )
+
+    _DPD_KEYS = (
+        DPD_ACTIONS, DPD_INTERVAL, DPD_TIMEOUT,
+    ) = (
+        'actions', 'interval', 'timeout',
+    )
 
     properties_schema = {
-        'name': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Name for the ipsec site connection.')
-        },
-        'description': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Description for the ipsec site connection.')
-        },
-        'peer_address': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Remote branch router public IPv4 address or '
-                             'IPv6 address or FQDN.')
-        },
-        'peer_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Remote branch router identity.')
-        },
-        'peer_cidrs': {
-            'Type': 'List',
-            'Required': True,
-            'Description': _('Remote subnet(s) in CIDR format.')
-        },
-        'mtu': {
-            'Type': 'Integer',
-            'Default': 1500,
-            'Description': _('Maximum transmission unit size (in bytes) for '
-                             'the ipsec site connection.')
-        },
-        'dpd': {
-            'Type': 'Map',
-            'Schema': dpd_schema,
-            'Description': _('Dead Peer Detection protocol configuration for '
-                             'the ipsec site connection.')
-        },
-        'psk': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Pre-shared key string for the ipsec site '
-                             'connection.')
-        },
-        'initiator': {
-            'Type': 'String',
-            'AllowedValues': ['bi-directional', 'response-only'],
-            'Default': 'bi-directional',
-            'Description': _('Initiator state in lowercase for the ipsec site '
-                             'connection.')
-        },
-        'admin_state_up': {
-            'Type': 'Boolean',
-            'UpdateAllowed': True,
-            'Default': True,
-            'Description': _('Administrative state for the ipsec site '
-                             'connection.')
-        },
-        'ikepolicy_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Unique identifier for the ike policy associated '
-                             'with the ipsec site connection.')
-        },
-        'ipsecpolicy_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Unique identifier for the ipsec policy '
-                             'associated with the ipsec site connection.')
-        },
-        'vpnservice_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('Unique identifier for the vpn service '
-                             'associated with the ipsec site connection.')
-        }
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name for the ipsec site connection.'),
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            _('Description for the ipsec site connection.'),
+            update_allowed=True
+        ),
+        PEER_ADDRESS: properties.Schema(
+            properties.Schema.STRING,
+            _('Remote branch router public IPv4 address or IPv6 address or '
+              'FQDN.'),
+            required=True
+        ),
+        PEER_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Remote branch router identity.'),
+            required=True
+        ),
+        PEER_CIDRS: properties.Schema(
+            properties.Schema.LIST,
+            _('Remote subnet(s) in CIDR format.'),
+            required=True
+        ),
+        MTU: properties.Schema(
+            properties.Schema.INTEGER,
+            _('Maximum transmission unit size (in bytes) for the ipsec site '
+              'connection.'),
+            default=1500
+        ),
+        DPD: properties.Schema(
+            properties.Schema.MAP,
+            _('Dead Peer Detection protocol configuration for the ipsec site '
+              'connection.'),
+            schema={
+                DPD_ACTIONS: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Controls DPD protocol mode.'),
+                    default='hold',
+                    constraints=[
+                        constraints.AllowedValues(['clear', 'disabled',
+                                                   'hold', 'restart',
+                                                   'restart-by-peer']),
+                    ]
+                ),
+                DPD_INTERVAL: properties.Schema(
+                    properties.Schema.INTEGER,
+                    _('Number of seconds for the DPD delay.'),
+                    default=30
+                ),
+                DPD_TIMEOUT: properties.Schema(
+                    properties.Schema.INTEGER,
+                    _('Number of seconds for the DPD timeout.'),
+                    default=120
+                ),
+            }
+        ),
+        PSK: properties.Schema(
+            properties.Schema.STRING,
+            _('Pre-shared key string for the ipsec site connection.'),
+            required=True
+        ),
+        INITIATOR: properties.Schema(
+            properties.Schema.STRING,
+            _('Initiator state in lowercase for the ipsec site connection.'),
+            default='bi-directional',
+            constraints=[
+                constraints.AllowedValues(['bi-directional', 'response-only']),
+            ]
+        ),
+        ADMIN_STATE_UP: properties.Schema(
+            properties.Schema.BOOLEAN,
+            _('Administrative state for the ipsec site connection.'),
+            default=True,
+            update_allowed=True
+        ),
+        IKEPOLICY_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Unique identifier for the ike policy associated with the '
+              'ipsec site connection.'),
+            required=True
+        ),
+        IPSECPOLICY_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Unique identifier for the ipsec policy associated with the '
+              'ipsec site connection.'),
+            required=True
+        ),
+        VPNSERVICE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('Unique identifier for the vpn service associated with the '
+              'ipsec site connection.'),
+            required=True
+        ),
     }
 
     attributes_schema = {
