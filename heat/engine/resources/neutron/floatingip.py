@@ -15,6 +15,7 @@
 
 from heat.engine import clients
 from heat.openstack.common import log as logging
+from heat.engine import properties
 from heat.engine.resources.neutron import neutron
 
 if clients.neutronclient is not None:
@@ -93,22 +94,28 @@ class FloatingIP(neutron.NeutronResource):
 
 
 class FloatingIPAssociation(neutron.NeutronResource):
+    PROPERTIES = (
+        FLOATINGIP_ID, PORT_ID, FIXED_IP_ADDRESS,
+    ) = (
+        'floatingip_id', 'port_id', 'fixed_ip_address',
+    )
+
     properties_schema = {
-        'floatingip_id': {
-            'Type': 'String',
-            'Required': True,
-            'Description': _('ID of the floating IP to associate.')
-        },
-        'port_id': {
-            'Type': 'String',
-            'Description': _('ID of an existing port with at least one IP '
-                             'address to associate with this floating IP.')
-        },
-        'fixed_ip_address': {
-            'Type': 'String',
-            'Description': _('IP address to use if the port has '
-                             'multiple addresses.')
-        }}
+        FLOATINGIP_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('ID of the floating IP to associate.'),
+            required=True
+        ),
+        PORT_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('ID of an existing port with at least one IP address to '
+              'associate with this floating IP.')
+        ),
+        FIXED_IP_ADDRESS: properties.Schema(
+            properties.Schema.STRING,
+            _('IP address to use if the port has multiple addresses.')
+        ),
+    }
 
     def handle_create(self):
         props = self.prepare_properties(self.properties, self.name)
