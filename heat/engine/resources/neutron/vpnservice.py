@@ -298,70 +298,92 @@ class IKEPolicy(neutron.NeutronResource):
     A resource for IKE policy in Neutron.
     """
 
-    lifetime_schema = {
-        'units': {
-            'Type': 'String',
-            'AllowedValues': ['seconds', 'kilobytes'],
-            'Default': 'seconds',
-            'Description': _('Safety assessment lifetime units.')
-        },
-        'value': {
-            'Type': 'Integer',
-            'Default': 3600,
-            'Description': _('Safety assessment lifetime value in specified '
-                             'units.')
-        },
-    }
+    PROPERTIES = (
+        NAME, DESCRIPTION, AUTH_ALGORITHM, ENCRYPTION_ALGORITHM,
+        PHASE1_NEGOTIATION_MODE, LIFETIME, PFS, IKE_VERSION,
+    ) = (
+        'name', 'description', 'auth_algorithm', 'encryption_algorithm',
+        'phase1_negotiation_mode', 'lifetime', 'pfs', 'ike_version',
+    )
+
+    _LIFETIME_KEYS = (
+        LIFETIME_UNITS, LIFETIME_VALUE,
+    ) = (
+        'units', 'value',
+    )
 
     properties_schema = {
-        'name': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Name for the ike policy.')
-        },
-        'description': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('Description for the ike policy.')
-        },
-        'auth_algorithm': {
-            'Type': 'String',
-            'AllowedValues': ['sha1'],
-            'Default': 'sha1',
-            'Description': _('Authentication hash algorithm for the ike '
-                             'policy.')
-        },
-        'encryption_algorithm': {
-            'Type': 'String',
-            'AllowedValues': ['3des', 'aes-128', 'aes-192', 'aes-256'],
-            'Default': 'aes-128',
-            'Description': _('Encryption algorithm for the ike policy.')
-        },
-        'phase1_negotiation_mode': {
-            'Type': 'String',
-            'AllowedValues': ['main'],
-            'Default': 'main',
-            'Description': _('Negotiation mode for the ike policy.')
-        },
-        'lifetime': {
-            'Type': 'Map',
-            'Schema': lifetime_schema,
-            'Description': _('Safety assessment lifetime configuration for '
-                             'the ike policy.')
-        },
-        'pfs': {
-            'Type': 'String',
-            'AllowedValues': ['group2', 'group5', 'group14'],
-            'Default': 'group5',
-            'Description': _('Perfect forward secrecy in lowercase for the '
-                             'ike policy.')
-        },
-        'ike_version': {
-            'Type': 'String',
-            'AllowedValues': ['v1', 'v2'],
-            'Default': 'v1',
-            'Description': _('Version for the ike policy.')
-        }
+        NAME: properties.Schema(
+            properties.Schema.STRING,
+            _('Name for the ike policy.'),
+            update_allowed=True
+        ),
+        DESCRIPTION: properties.Schema(
+            properties.Schema.STRING,
+            _('Description for the ike policy.'),
+            update_allowed=True
+        ),
+        AUTH_ALGORITHM: properties.Schema(
+            properties.Schema.STRING,
+            _('Authentication hash algorithm for the ike policy.'),
+            default='sha1',
+            constraints=[
+                constraints.AllowedValues(['sha1']),
+            ]
+        ),
+        ENCRYPTION_ALGORITHM: properties.Schema(
+            properties.Schema.STRING,
+            _('Encryption algorithm for the ike policy.'),
+            default='aes-128',
+            constraints=[
+                constraints.AllowedValues(['3des', 'aes-128', 'aes-192',
+                                           'aes-256']),
+            ]
+        ),
+        PHASE1_NEGOTIATION_MODE: properties.Schema(
+            properties.Schema.STRING,
+            _('Negotiation mode for the ike policy.'),
+            default='main',
+            constraints=[
+                constraints.AllowedValues(['main']),
+            ]
+        ),
+        LIFETIME: properties.Schema(
+            properties.Schema.MAP,
+            _('Safety assessment lifetime configuration for the ike policy.'),
+            schema={
+                LIFETIME_UNITS: properties.Schema(
+                    properties.Schema.STRING,
+                    _('Safety assessment lifetime units.'),
+                    default='seconds',
+                    constraints=[
+                        constraints.AllowedValues(['seconds', 'kilobytes']),
+                    ]
+                ),
+                LIFETIME_VALUE: properties.Schema(
+                    properties.Schema.INTEGER,
+                    _('Safety assessment lifetime value in specified '
+                      'units.'),
+                    default=3600
+                ),
+            }
+        ),
+        PFS: properties.Schema(
+            properties.Schema.STRING,
+            _('Perfect forward secrecy in lowercase for the ike policy.'),
+            default='group5',
+            constraints=[
+                constraints.AllowedValues(['group2', 'group5', 'group14']),
+            ]
+        ),
+        IKE_VERSION: properties.Schema(
+            properties.Schema.STRING,
+            _('Version for the ike policy.'),
+            default='v1',
+            constraints=[
+                constraints.AllowedValues(['v1', 'v2']),
+            ]
+        ),
     }
 
     attributes_schema = {
