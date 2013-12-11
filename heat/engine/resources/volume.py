@@ -20,6 +20,7 @@ from heat.openstack.common.importutils import try_import
 
 from heat.common import exception
 from heat.engine import clients
+from heat.engine import constraints
 from heat.engine import properties
 from heat.engine import resource
 from heat.engine.resources import nova_utils
@@ -301,24 +302,36 @@ class VolumeDetachTask(object):
 
 
 class VolumeAttachment(resource.Resource):
+    PROPERTIES = (
+        INSTANCE_ID, VOLUME_ID, DEVICE,
+    ) = (
+        'InstanceId', 'VolumeId', 'Device',
+    )
+
     properties_schema = {
-        'InstanceId': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The ID of the instance to which the '
-                             'volume attaches.')},
-        'VolumeId': {
-            'Type': 'String', 'Required': True,
-            'Description': _('The ID of the volume to be attached.')},
-        'Device': {
-            'Type': 'String', 'Required': True,
-            'AllowedPattern': '/dev/vd[b-z]',
-            'Description': _('The device where the volume is exposed on '
-                             'the instance.')}
+        INSTANCE_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The ID of the instance to which the volume attaches.'),
+            required=True
+        ),
+        VOLUME_ID: properties.Schema(
+            properties.Schema.STRING,
+            _('The ID of the volume to be attached.'),
+            required=True
+        ),
+        DEVICE: properties.Schema(
+            properties.Schema.STRING,
+            _('The device where the volume is exposed on the instance.'),
+            required=True,
+            constraints=[
+                constraints.AllowedPattern('/dev/vd[b-z]'),
+            ]
+        ),
     }
 
-    _instance_property = 'InstanceId'
-    _volume_property = 'VolumeId'
-    _device_property = 'Device'
+    _instance_property = INSTANCE_ID
+    _volume_property = VOLUME_ID
+    _device_property = DEVICE
 
     def handle_create(self):
         server_id = self.properties[self._instance_property]
