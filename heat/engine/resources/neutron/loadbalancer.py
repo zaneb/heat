@@ -32,48 +32,68 @@ class HealthMonitor(neutron.NeutronResource):
     A resource for managing health monitors for load balancers in Neutron.
     """
 
+    PROPERTIES = (
+        DELAY, TYPE, MAX_RETRIES, TIMEOUT, ADMIN_STATE_UP,
+        HTTP_METHOD, EXPECTED_CODES, URL_PATH,
+    ) = (
+        'delay', 'type', 'max_retries', 'timeout', 'admin_state_up',
+        'http_method', 'expected_codes', 'url_path',
+    )
+
     properties_schema = {
-        'delay': {
-            'Type': 'Integer', 'Required': True,
-            'UpdateAllowed': True,
-            'Description': _('The minimum time in seconds between regular '
-                             'connections of the member.')},
-        'type': {
-            'Type': 'String', 'Required': True,
-            'AllowedValues': ['PING', 'TCP', 'HTTP', 'HTTPS'],
-            'Description': _('One of predefined health monitor types.')},
-        'max_retries': {
-            'Type': 'Integer', 'Required': True,
-            'UpdateAllowed': True,
-            'Description': _('Number of permissible connection failures before'
-                             ' changing the member status to INACTIVE.')},
-        'timeout': {
-            'Type': 'Integer', 'Required': True,
-            'UpdateAllowed': True,
-            'Description': _('Maximum number of seconds for a monitor to '
-                             'wait for a connection to be established before '
-                             'it times out.')},
-        'admin_state_up': {
-            'Default': True, 'Type': 'Boolean',
-            'UpdateAllowed': True,
-            'Description': _('The administrative state of the health '
-                             'monitor.')},
-        'http_method': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('The HTTP method used for requests by the '
-                             'monitor of type HTTP.')},
-        'expected_codes': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('The list of HTTP status codes expected in '
-                             'response from the member to declare it '
-                             'healthy.')},
-        'url_path': {
-            'Type': 'String',
-            'UpdateAllowed': True,
-            'Description': _('The HTTP path used in the HTTP request used '
-                             'by the monitor to test a member health.')},
+        DELAY: properties.Schema(
+            properties.Schema.INTEGER,
+            _('The minimum time in seconds between regular connections of '
+              'the member.'),
+            required=True,
+            update_allowed=True
+        ),
+        TYPE: properties.Schema(
+            properties.Schema.STRING,
+            _('One of predefined health monitor types.'),
+            required=True,
+            constraints=[
+                constraints.AllowedValues(['PING', 'TCP', 'HTTP', 'HTTPS']),
+            ]
+        ),
+        MAX_RETRIES: properties.Schema(
+            properties.Schema.INTEGER,
+            _('Number of permissible connection failures before changing the '
+              'member status to INACTIVE.'),
+            required=True,
+            update_allowed=True
+        ),
+        TIMEOUT: properties.Schema(
+            properties.Schema.INTEGER,
+            _('Maximum number of seconds for a monitor to wait for a '
+              'connection to be established before it times out.'),
+            required=True,
+            update_allowed=True
+        ),
+        ADMIN_STATE_UP: properties.Schema(
+            properties.Schema.BOOLEAN,
+            _('The administrative state of the health monitor.'),
+            default=True,
+            update_allowed=True
+        ),
+        HTTP_METHOD: properties.Schema(
+            properties.Schema.STRING,
+            _('The HTTP method used for requests by the monitor of type '
+              'HTTP.'),
+            update_allowed=True
+        ),
+        EXPECTED_CODES: properties.Schema(
+            properties.Schema.STRING,
+            _('The list of HTTP status codes expected in response from the '
+              'member to declare it healthy.'),
+            update_allowed=True
+        ),
+        URL_PATH: properties.Schema(
+            properties.Schema.STRING,
+            _('The HTTP path used in the HTTP request used by the monitor to '
+              'test a member health.'),
+            update_allowed=True
+        ),
     }
 
     update_allowed_keys = ('Properties',)
