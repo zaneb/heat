@@ -18,7 +18,6 @@ import collections
 from heat.common import exception
 from heat.engine import parameters
 from heat.engine import constraints as constr
-from heat.engine import hot
 
 SCHEMA_KEYS = (
     REQUIRED, IMPLEMENTED, DEFAULT, TYPE, SCHEMA,
@@ -154,6 +153,8 @@ class Schema(constr.Schema):
             if parameters.ALLOWED_PATTERN in param:
                 yield constr.AllowedPattern(param[parameters.ALLOWED_PATTERN],
                                             desc)
+
+        import hot
 
         def constraints_hot():
             constraints = param.get(hot.CONSTRAINTS)
