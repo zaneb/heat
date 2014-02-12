@@ -653,7 +653,8 @@ class WaitConditionUpdateTest(HeatTestCase):
                               "Timeout": "5",
                               "Count": "5"}}
         prop_diff = {"Count": 5}
-        updater = rsrc.handle_update(update_snippet, {}, prop_diff)
+        parsed_snippet = self.stack.resolve_static_data(update_snippet)
+        updater = rsrc.handle_update(parsed_snippet, {}, prop_diff)
         updater.run_to_completion()
 
         self.assertEqual(5, rsrc.properties['Count'])
@@ -687,7 +688,8 @@ class WaitConditionUpdateTest(HeatTestCase):
                               "Timeout": "5",
                               "Count": "5"}}
         prop_diff = {"Count": 5}
-        updater = rsrc.handle_update(update_snippet, {}, prop_diff)
+        parsed_snippet = self.stack.resolve_static_data(update_snippet)
+        updater = rsrc.handle_update(parsed_snippet, {}, prop_diff)
         updater.run_to_completion()
 
         self.assertEqual(5, rsrc.properties['Count'])
@@ -732,7 +734,8 @@ class WaitConditionUpdateTest(HeatTestCase):
                               "Timeout": "5",
                               "Count": "5"}}
         prop_diff = {"Count": 5}
-        updater = rsrc.handle_update(update_snippet, {}, prop_diff)
+        parsed_snippet = self.stack.resolve_static_data(update_snippet)
+        updater = rsrc.handle_update(parsed_snippet, {}, prop_diff)
         self.assertEqual(5, rsrc.properties['Count'])
         self.assertRaises(wc.WaitConditionTimeout, updater.run_to_completion)
 
