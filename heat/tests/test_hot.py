@@ -13,6 +13,7 @@
 #    under the License.
 from heat.common import template_format
 from heat.common import exception
+from heat.engine import environment
 from heat.engine import parser
 from heat.engine import hot
 from heat.engine import parameters
@@ -30,6 +31,18 @@ heat_template_version: 2013-05-23
 
 class HOTemplateTest(HeatTestCase):
     """Test processing of HOT templates."""
+
+    @staticmethod
+    def resolve(snippet, template, stack=None):
+        if stack is not None:
+            params = stack.parameters
+            resources = stack.resources
+        else:
+            params = {}
+            resources = {}
+
+        static = parser.resolve_static_data(template, stack, params, snippet)
+        return parser.resolve_runtime_data(template, resources, static)
 
     def test_defaults(self):
         """Test default content behavior of HOT template."""
@@ -144,21 +157,34 @@ class HOTemplateTest(HeatTestCase):
 
     def test_param_refs(self):
         """Test if parameter references work."""
-        params = {'foo': 'bar', 'blarg': 'wibble'}
+
+        hot_tpl = template_format.parse('''
+        heat_template_version: 2013-05-23
+        parameters:
+          foo:
+            type: string
+          blarg:
+            type: string
+        ''')
+
+        env = environment.Environment({'foo': 'bar', 'blarg': 'wibble'})
         snippet = {'properties': {'key1': {'get_param': 'foo'},
                                   'key2': {'get_param': 'blarg'}}}
         snippet_resolved = {'properties': {'key1': 'bar',
                                            'key2': 'wibble'}}
-        tmpl = parser.Template(hot_tpl_empty)
-        self.assertEqual(tmpl.resolve_param_refs(snippet, params),
-                         snippet_resolved)
+        tmpl = parser.Template(hot_tpl)
+        stack = parser.Stack(None, 'test', tmpl, env)
+        resolve = lambda s: self.resolve(s, tmpl, stack)
+
+        self.assertEqual(snippet_resolved, resolve(snippet))
+
         snippet = {'properties': {'key1': {'Ref': 'foo'},
                                   'key2': {'Ref': 'blarg'}}}
         snippet_resolved = {'properties': {'key1': 'bar',
                                            'key2': 'wibble'}}
         tmpl = parser.Template(hot_tpl_empty)
-        self.assertEqual(snippet_resolved,
-                         tmpl.resolve_param_refs(snippet, params))
+
+        self.assertEqual(snippet_resolved, resolve(snippet))
 
     def test_str_replace(self):
         """Test str_replace function."""
@@ -169,8 +195,7 @@ class HOTemplateTest(HeatTestCase):
 
         tmpl = parser.Template(hot_tpl_empty)
 
-        self.assertEqual(snippet_resolved,
-                         tmpl.resolve_replace(snippet))
+        self.assertEqual(snippet_resolved, self.resolve(snippet, tmpl))
 
     def test_str_replace_number(self):
         """Test str_replace function with numbers."""
@@ -181,8 +206,7 @@ class HOTemplateTest(HeatTestCase):
 
         tmpl = parser.Template(hot_tpl_empty)
 
-        self.assertEqual(snippet_resolved,
-                         tmpl.resolve_replace(snippet))
+        self.assertEqual(snippet_resolved, self.resolve(snippet, tmpl))
 
     def test_str_fn_replace(self):
         """Test Fn:Replace function."""
@@ -193,7 +217,7 @@ class HOTemplateTest(HeatTestCase):
 
         tmpl = parser.Template(hot_tpl_empty)
 
-        self.assertEqual(tmpl.resolve_replace(snippet), snippet_resolved)
+        self.assertEqual(snippet_resolved, self.resolve(snippet, tmpl))
 
     def test_str_replace_syntax(self):
         """
@@ -208,7 +232,7 @@ class HOTemplateTest(HeatTestCase):
 
         tmpl = parser.Template(hot_tpl_empty)
 
-        self.assertRaises(TypeError, tmpl.resolve_replace, snippet)
+        self.assertRaises(TypeError, self.resolve, snippet, tmpl)
 
     def test_str_replace_invalid_param_keys(self):
         """
@@ -223,12 +247,12 @@ class HOTemplateTest(HeatTestCase):
 
         tmpl = parser.Template(hot_tpl_empty)
 
-        self.assertRaises(KeyError, tmpl.resolve_replace, snippet)
+        self.assertRaises(KeyError, self.resolve, snippet, tmpl)
 
         snippet = {'str_replace': {'tmpl': 'Template var1 string var2',
                                    'parms': {'var1': 'foo', 'var2': 'bar'}}}
 
-        self.assertRaises(KeyError, tmpl.resolve_replace, snippet)
+        self.assertRaises(KeyError, self.resolve, snippet, tmpl)
 
     def test_str_replace_invalid_param_types(self):
         """
@@ -243,16 +267,19 @@ class HOTemplateTest(HeatTestCase):
 
         tmpl = parser.Template(hot_tpl_empty)
 
-        self.assertRaises(TypeError, tmpl.resolve_replace, snippet)
+        self.assertRaises(TypeError, self.resolve, snippet, tmpl)
 
         snippet = {'str_replace': {'template': 'Template var1 string var2',
                                    'params': ['var1', 'foo', 'var2', 'bar']}}
 
-        self.assertRaises(TypeError, tmpl.resolve_replace, snippet)
+        self.assertRaises(TypeError, self.resolve, snippet, tmpl)
 
 
 class StackTest(test_parser.StackTest):
     """Test stack function when stack was created from HOT template."""
+
+    def resolve(self, snippet):
+        return HOTemplateTest.resolve(snippet, self.stack.t, self.stack)
 
     @utils.stack_delete_after
     def test_get_attr(self):
@@ -283,19 +310,18 @@ class StackTest(test_parser.StackTest):
                 (rsrc.UPDATE, rsrc.COMPLETE)):
             rsrc.state_set(action, status)
 
-            resolved = hot.HOTemplate.resolve_attributes(snippet, self.stack)
             # GenericResourceType has an attribute 'foo' which yields the
             # resource name.
-            self.assertEqual(resolved, {'Value': 'resource1'})
+            self.assertEqual({'Value': 'resource1'}, self.resolve(snippet))
             # test invalid reference
+
+        rsrc.state_set(rsrc.CREATE, rsrc.COMPLETE)
         self.assertRaises(exception.InvalidTemplateAttribute,
-                          hot.HOTemplate.resolve_attributes,
-                          {'Value': {'get_attr': ['resource1', 'NotThere']}},
-                          self.stack)
+                          self.resolve,
+                          {'Value': {'get_attr': ['resource1', 'NotThere']}})
 
         snippet = {'Value': {'Fn::GetAtt': ['resource1', 'foo']}}
-        resolved = hot.HOTemplate.resolve_attributes(snippet, self.stack)
-        self.assertEqual({'Value': 'resource1'}, resolved)
+        self.assertEqual({'Value': 'resource1'}, self.resolve(snippet))
 
     @utils.stack_delete_after
     def test_get_resource(self):
@@ -316,8 +342,7 @@ class StackTest(test_parser.StackTest):
                          (parser.Stack.CREATE, parser.Stack.COMPLETE))
 
         snippet = {'value': {'get_resource': 'resource1'}}
-        resolved = hot.HOTemplate.resolve_resource_refs(snippet, self.stack)
-        self.assertEqual(resolved, {'value': 'resource1'})
+        self.assertEqual({'value': 'resource1'}, self.resolve(snippet))
 
 
 class HOTParamValidatorTest(HeatTestCase):
