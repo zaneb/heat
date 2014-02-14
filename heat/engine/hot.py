@@ -12,7 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from heat.common import exception
+import collections
+
 from heat.engine import template
 from heat.engine import parameters
 from heat.openstack.common.gettextutils import _
@@ -147,120 +148,69 @@ class HOTemplate(template.Template):
 
         return cfn_outputs
 
-    @staticmethod
-    def resolve_param_refs(s, parameters, transform=None):
-        """
-        Resolve constructs of the form { get_param: my_param }
-        """
-        def match_param_ref(key, value):
-            return (key in ['get_param', 'Ref'] and
-                    value is not None and
-                    value in parameters)
-
-        def handle_param_ref(ref):
-            try:
-                return parameters[ref]
-            except (KeyError, ValueError):
-                raise exception.UserParameterMissing(key=ref)
-
-        return template._resolve(match_param_ref, handle_param_ref, s,
-                                 transform)
-
-    @staticmethod
-    def resolve_resource_refs(s, resources, transform=None):
-        '''
-        Resolve constructs of the form { "get_resource" : "resource" }
-        '''
-        def match_resource_ref(key, value):
-            return key in ['get_resource', 'Ref'] and value in resources
-
-        def handle_resource_ref(arg):
-            return resources[arg].FnGetRefId()
-
-        return template._resolve(match_resource_ref, handle_resource_ref, s,
-                                 transform)
-
-    @staticmethod
-    def resolve_attributes(s, resources, transform=None):
-        """
-        Resolve constructs of the form { get_attr: [my_resource, my_attr] }
-        """
-        def match_get_attr(key, value):
-            return (key in ['get_attr', 'Fn::GetAtt'] and
-                    isinstance(value, list) and
-                    len(value) == 2 and
-                    None not in value and
-                    value[0] in resources)
-
-        def handle_get_attr(args):
-            resource, att = args
-            try:
-                r = resources[resource]
-                if r.state in (
-                        (r.CREATE, r.IN_PROGRESS),
-                        (r.CREATE, r.COMPLETE),
-                        (r.RESUME, r.IN_PROGRESS),
-                        (r.RESUME, r.COMPLETE),
-                        (r.UPDATE, r.IN_PROGRESS),
-                        (r.UPDATE, r.COMPLETE)):
-                    return r.FnGetAtt(att)
-            except KeyError:
-                raise exception.InvalidTemplateAttribute(resource=resource,
-                                                         key=att)
-
-        return template._resolve(match_get_attr, handle_get_attr, s,
-                                 transform)
-
-    @staticmethod
-    def resolve_replace(s, transform=None):
-        """
-        Resolve template string substitution via function str_replace
-
-        Resolves the str_replace function of the form::
-
-          str_replace:
-            template: <string template>
-            params:
-              <param dictionary>
-        """
-        def handle_str_replace(args):
-            if not (isinstance(args, dict) or isinstance(args, list)):
-                raise TypeError(_('Arguments to "str_replace" must be a'
-                                'dictionary or a list'))
-
-            try:
-                if isinstance(args, dict):
-                    text = args.get('template')
-                    params = args.get('params', {})
-                elif isinstance(args, list):
-                    params, text = args
-                if text is None:
-                    raise KeyError()
-            except KeyError:
-                example = ('''str_replace:
-                  template: This is var1 template var2
-                  params:
-                    var1: a
-                    var2: string''')
-                raise KeyError(_('"str_replace" syntax should be %s') %
-                               example)
-            if not hasattr(text, 'replace'):
-                raise TypeError(_('"template" parameter must be a string'))
-            if not isinstance(params, dict):
-                raise TypeError(
-                    _('"params" parameter must be a dictionary'))
-            for key in params.iterkeys():
-                value = params.get(key, '') or ""
-                text = text.replace(key, str(value))
-            return text
-
-        match_str_replace = lambda k, v: k in ['str_replace', 'Fn::Replace']
-        return template._resolve(match_str_replace,
-                                 handle_str_replace, s, transform)
+    def functions(self):
+        return {
+            'Fn::FindInMap': template.FindInMap,
+            'Fn::GetAZs': template.GetAZs,
+            'get_param': template.ParamRef,
+            'get_resource': template.ResourceRef,
+            'Ref': template.Ref,
+            'get_attr': template.GetAtt,
+            'Fn::GetAtt': template.GetAtt,
+            'Fn::Select': template.Select,
+            'Fn::Join': template.Join,
+            'Fn::Split': template.Split,
+            'str_replace': Replace,
+            'Fn::Replace': template.Replace,
+            'Fn::Base64': template.Base64,
+            'Fn::MemberListToMap': template.MemberListToMap,
+            'Fn::ResourceFacade': template.ResourceFacade,
+        }
 
     def param_schemata(self):
         params = self[PARAMETERS].iteritems()
         return dict((name, HOTParamSchema(schema)) for name, schema in params)
+
+
+class Replace(template.Replace):
+    '''
+    A function for performing string substitutions.
+
+    Takes the form::
+
+        str_replace:
+          template: <key_1> <key_2>
+          params:
+            <key_1>: <value_1>
+            <key_2>: <value_2>
+            ...
+
+    And resolves to::
+
+        "<value_1> <value_2>"
+
+    This is implemented using Python's str.replace on each key. The order in
+    which replacements are performed is undefined.
+    '''
+
+    def _parse_args(self):
+        if not isinstance(self.args, collections.Mapping):
+            raise TypeError(_('Arguments to "%s" must be a map') %
+                            self.fn_name)
+
+        try:
+            mapping = self.args['params']
+            string = self.args['template']
+        except (KeyError, TypeError):
+            example = ('''str_replace:
+              template: This is var1 template var2
+              params:
+                var1: a
+                var2: string''')
+            raise KeyError(_('"str_replace" syntax should be %s') %
+                           example)
+        else:
+            return mapping, string
 
 
 class HOTParamSchema(parameters.ParamSchema):

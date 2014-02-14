@@ -14,11 +14,13 @@
 #    under the License.
 
 import collections
+import functools
 import json
 
 from heat.api.aws import utils as aws_utils
 from heat.db import api as db_api
 from heat.common import exception
+from heat.engine import function
 from heat.engine.parameters import ParamSchema
 
 SECTIONS = (VERSION, DESCRIPTION, MAPPINGS,
@@ -87,417 +89,532 @@ class Template(collections.Mapping):
         '''Return the number of sections.'''
         return len(SECTIONS)
 
-    def resolve_find_in_map(self, s, transform=None):
-        '''
-        Resolve constructs of the form { "Fn::FindInMap" : [ "mapping",
-                                                             "key",
-                                                             "value" ] }
-        '''
-        def handle_find_in_map(args):
+    def param_schemata(self):
+        parameters = self[PARAMETERS].iteritems()
+        return dict((name, ParamSchema(schema)) for name, schema in parameters)
+
+    def functions(self):
+        return {
+            'Fn::FindInMap': FindInMap,
+            'Fn::GetAZs': GetAZs,
+            'Ref': Ref,
+            'Fn::GetAtt': GetAtt,
+            'Fn::Select': Select,
+            'Fn::Join': Join,
+            'Fn::Split': Split,
+            'Fn::Replace': Replace,
+            'Fn::Base64': Base64,
+            'Fn::MemberListToMap': MemberListToMap,
+            'Fn::ResourceFacade': ResourceFacade,
+        }
+
+    def parse(self, stack, snippet):
+        parse = functools.partial(self.parse, stack)
+
+        if isinstance(snippet, collections.Mapping):
+            if len(snippet) == 1:
+                fn_name, args = next(snippet.iteritems())
+                Func = self.functions().get(fn_name)
+                if Func is not None:
+                    return Func(stack, fn_name, parse(args))
+            return dict((k, parse(v)) for k, v in snippet.iteritems())
+        elif (not isinstance(snippet, basestring) and
+              isinstance(snippet, collections.Iterable)):
+            return [parse(v) for v in snippet]
+        else:
+            return snippet
+
+
+class FindInMap(function.Function):
+    '''
+    A function for resolving keys in the template mappings.
+
+    Takes the form::
+
+        { "Fn::FindInMap" : [ "mapping",
+                              "key",
+                              "value" ] }
+    '''
+
+    def __init__(self, stack, fn_name, args):
+        super(FindInMap, self).__init__(stack, fn_name, args)
+
+        try:
+            self._mapname, self._mapkey, self._mapvalue = self.args
+        except ValueError as ex:
+            raise KeyError(str(ex))
+
+    def result(self):
+        mapping = self.stack.t.maps[function.resolve(self._mapname)]
+        key = function.resolve(self._mapkey)
+        value = function.resolve(self._mapvalue)
+        return mapping[key][value]
+
+
+class GetAZs(function.Function):
+    '''
+    A function for retrieving the availability zones.
+
+    Takes the form::
+
+        { "Fn::GetAZs" : "<region>" }
+    '''
+
+    def result(self):
+        region = function.resolve(self.args)
+
+        if self.stack is None:
+            return ['nova']
+        else:
+            return self.stack.get_availability_zones()
+
+
+class ParamRef(function.Function):
+    '''
+    A function for resolving parameter references.
+
+    Takes the form::
+
+        { "Ref" : "<param_name>" }
+    '''
+
+    def result(self):
+        param_name = function.resolve(self.args)
+
+        try:
+            return self.stack.parameters[param_name]
+        except (KeyError, ValueError):
+            raise exception.UserParameterMissing(key=param_name)
+
+
+class ResourceRef(function.Function):
+    '''
+    A function for resolving resource references.
+
+    Takes the form::
+
+        { "Ref" : "<resource_name>" }
+    '''
+
+    def _resource(self):
+        resource_name = function.resolve(self.args)
+
+        return self.stack[resource_name]
+
+    def result(self):
+        return self._resource().FnGetRefId()
+
+
+def Ref(stack, fn_name, args):
+    '''
+    A function for resolving parameters or resource references.
+
+    Takes the form::
+
+        { "Ref" : "<param_name>" }
+
+    or::
+
+        { "Ref" : "<resource_name>" }
+    '''
+    if args in stack.t[RESOURCES]:
+        RefClass = ResourceRef
+    else:
+        RefClass = ParamRef
+    return RefClass(stack, fn_name, args)
+
+
+class GetAtt(function.Function):
+    '''
+    A function for resolving resource attributes.
+
+    Takes the form::
+
+        { "Fn::GetAtt" : [ "<resource_name>",
+                           "<attribute_name" ] }
+    '''
+
+    def __init__(self, stack, fn_name, args):
+        super(GetAtt, self).__init__(stack, fn_name, args)
+
+        try:
+            self._resource_name, self._attribute = self.args
+        except ValueError as ex:
+            raise ValueError(_('Arguments to "%s" must be of the form '
+                               '[resource_name, attribute]') % self.fn_name)
+
+    def _resource(self):
+        resource_name = unicode(self._resource_name)
+
+        try:
+            return self.stack[resource_name]
+        except KeyError:
+            raise exception.InvalidTemplateAttribute(
+                resource=self._resource_name,
+                key=unicode(self._attribute))
+
+    def result(self):
+        attribute = function.resolve(self._attribute)
+
+        r = self._resource()
+        if (r.status in (r.IN_PROGRESS, r.COMPLETE) and
+                r.action in (r.CREATE, r.RESUME, r.UPDATE)):
+            return r.FnGetAtt(attribute)
+        else:
+            return None
+
+
+class Select(function.Function):
+    '''
+    A function for selecting an item from a list or map.
+
+    Takes the form (for a list lookup)::
+
+        { "Fn::Select" : [ "<index>", [ "<value_1>", "<value_2>", ... ] ] }
+
+    Takes the form (for a map lookup)::
+
+        { "Fn::Select" : [ "<index>", { "<key_1>": "<value_1>", ... } ] }
+
+    If the selected index is not found, this function resolves to an empty
+    string.
+    '''
+
+    def __init__(self, stack, fn_name, args):
+        super(Select, self).__init__(stack, fn_name, args)
+
+        try:
+            self._lookup, self._strings = self.args
+        except ValueError as ex:
+            raise ValueError(_('Arguments to "%s" must be of the form '
+                               '[index, collection]') % self.fn_name)
+
+    def result(self):
+        index = function.resolve(self._lookup)
+
+        try:
+            index = int(index)
+        except (ValueError, TypeError):
+            pass
+
+        strings = function.resolve(self._strings)
+
+        if strings == '':
+            # an empty string is a common response from other
+            # functions when result is not currently available.
+            # Handle by returning an empty string
+            return ''
+
+        if isinstance(strings, basestring):
+            # might be serialized json.
             try:
-                name, key, value = args
-                return self.maps[name][key][value]
-            except (ValueError, TypeError) as ex:
-                raise KeyError(str(ex))
+                strings = json.loads(unicode(strings))
+            except ValueError as json_ex:
+                raise ValueError(_('"%s": %s') % (self.fn_name, json_ex))
 
-        return _resolve(lambda k, v: k == 'Fn::FindInMap',
-                        handle_find_in_map, s, transform)
+        if isinstance(strings, collections.Mapping):
+            if not isinstance(index, basestring):
+                raise TypeError(_('Index to "%s" must be a string') %
+                                self.fn_name)
+            return strings.get(index, '')
 
-    @staticmethod
-    def resolve_availability_zones(s, stack, transform=None):
-        '''
-            looking for { "Fn::GetAZs" : "str" }
-        '''
-        def match_get_az(key, value):
-            return (key == 'Fn::GetAZs' and
-                    isinstance(value, basestring))
-
-        def handle_get_az(ref):
-            if stack is None:
-                return ['nova']
-            else:
-                return stack.get_availability_zones()
-
-        return _resolve(match_get_az, handle_get_az, s, transform)
-
-    @staticmethod
-    def resolve_param_refs(s, parameters, transform=None):
-        '''
-        Resolve constructs of the form { "Ref" : "string" }
-        '''
-        def match_param_ref(key, value):
-            return (key == 'Ref' and
-                    isinstance(value, basestring) and
-                    value in parameters)
-
-        def handle_param_ref(ref):
-            try:
-                return parameters[ref]
-            except (KeyError, ValueError):
-                raise exception.UserParameterMissing(key=ref)
-
-        return _resolve(match_param_ref, handle_param_ref, s, transform)
-
-    @staticmethod
-    def resolve_resource_refs(s, resources, transform=None):
-        '''
-        Resolve constructs of the form { "Ref" : "resource" }
-        '''
-        def match_resource_ref(key, value):
-            return key == 'Ref' and value in resources
-
-        def handle_resource_ref(arg):
-            return resources[arg].FnGetRefId()
-
-        return _resolve(match_resource_ref, handle_resource_ref, s, transform)
-
-    @staticmethod
-    def resolve_attributes(s, resources, transform=None):
-        '''
-        Resolve constructs of the form { "Fn::GetAtt" : [ "WebServer",
-                                                          "PublicIp" ] }
-        '''
-        def handle_getatt(args):
-            resource, att = args
-            try:
-                r = resources[resource]
-                if r.state in (
-                        (r.CREATE, r.IN_PROGRESS),
-                        (r.CREATE, r.COMPLETE),
-                        (r.RESUME, r.IN_PROGRESS),
-                        (r.RESUME, r.COMPLETE),
-                        (r.UPDATE, r.IN_PROGRESS),
-                        (r.UPDATE, r.COMPLETE)):
-                    return r.FnGetAtt(att)
-            except KeyError:
-                raise exception.InvalidTemplateAttribute(resource=resource,
-                                                         key=att)
-
-        return _resolve(lambda k, v: k == 'Fn::GetAtt', handle_getatt, s,
-                        transform)
-
-    @staticmethod
-    def reduce_joins(s, transform=None):
-        '''
-        Reduces contiguous strings in Fn::Join to a single joined string
-        eg the following
-        { "Fn::Join" : [ " ", [ "str1", "str2", {"f": "b"}, "str3", "str4"]}
-        is reduced to
-        { "Fn::Join" : [ " ", [ "str1 str2", {"f": "b"}, "str3 str4"]}
-        '''
-        def handle_join(args):
-            if not isinstance(args, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Join" must be a list'))
-            try:
-                delim, items = args
-            except ValueError:
-                example = '"Fn::Join" : [ " ", [ "str1", "str2"]]'
-                raise ValueError(_('Incorrect arguments to '
-                                   '"Fn::Join" should be: %s') %
-                                 example)
-
-            if not isinstance(items, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Join" '
-                                  'not fully resolved'))
-            reduced = []
-            contiguous = []
-            for item in items:
-                if isinstance(item, (str, unicode)):
-                    contiguous.append(item)
-                else:
-                    if contiguous:
-                        reduced.append(delim.join(contiguous))
-                        contiguous = []
-                    reduced.append(item)
-            if contiguous:
-                reduced.append(delim.join(contiguous))
-            return {'Fn::Join': [delim, reduced]}
-
-        return _resolve(lambda k, v: k == 'Fn::Join', handle_join, s,
-                        transform)
-
-    @staticmethod
-    def resolve_select(s, transform=None):
-        '''
-        Resolve constructs of the form:
-        (for a list lookup)
-        { "Fn::Select" : [ "2", [ "apples", "grapes", "mangoes" ] ] }
-        returns "mangoes"
-        { "Fn::Select" : [ "3", [ "apples", "grapes", "mangoes" ] ] }
-        returns ""
-
-        (for a dict lookup)
-        { "Fn::Select" : [ "red", {"red": "a", "flu": "b"} ] }
-        returns "a"
-        { "Fn::Select" : [ "blue", {"red": "a", "flu": "b"} ] }
-        returns ""
-
-        Note: can raise ValueError and TypeError
-        '''
-        def handle_select(args):
-            example = '"Fn::Select": [1, ["str1", "str2"]]'
-            if not isinstance(args, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Select" must be a list'))
+        if (isinstance(strings, collections.Sequence) and
+                not isinstance(strings, basestring)):
+            if not isinstance(index, (int, long)):
+                raise TypeError(_('Index to "%s" must be an integer') %
+                                self.fn_name)
 
             try:
-                lookup, strings = args
-            except ValueError:
-                raise ValueError(_('Incorrect arguments to '
-                                   '"Fn::Select" should be: %s') %
-                                 example)
-
-            if not isinstance(lookup, (basestring, int)):
-                raise TypeError(_('Index to "Fn::Select" should be either a '
-                                  'string or an integer value: %s') %
-                                example)
-            try:
-                index = int(lookup)
-            except ValueError:
-                index = lookup
-
-            if strings == '':
-                # an empty string is a common response from other
-                # functions when result is not currently available.
-                # Handle by returning an empty string
+                return strings[index]
+            except IndexError:
                 return ''
 
-            if isinstance(strings, basestring):
-                # might be serialized json.
-                try:
-                    strings = json.loads(strings)
-                except ValueError as json_ex:
-                    raise ValueError(_('"Fn::Select" %s') % json_ex)
+        if strings is None:
+            return ''
 
-            if isinstance(strings, (list, tuple)) and isinstance(index, int):
-                try:
-                    return strings[index]
-                except IndexError:
-                    return ''
-            if isinstance(strings, dict) and isinstance(index, basestring):
-                return strings.get(index, '')
-            if strings is None:
+        raise TypeError(_('Arguments to %s not fully resolved') %
+                        self.fn_name)
+
+
+class Join(function.Function):
+    '''
+    A function for joining strings.
+
+    Takes the form::
+
+        { "Fn::Join" : [ "<delim>", [ "<string_1>", "<string_2>", ... ] }
+
+    And resolves to::
+
+        "<string_1><delim><string_2><delim>..."
+    '''
+
+    def __init__(self, stack, fn_name, args):
+        super(Join, self).__init__(stack, fn_name, args)
+
+        example = '"%s" : [ " ", [ "str1", "str2"]]' % self.fn_name
+
+        if isinstance(self.args, (basestring, collections.Mapping)):
+            raise TypeError(_('Incorrect arguments to "%s" should be: %s') %
+                            (self.fn_name, example))
+
+        try:
+            self._delim, self._strings = self.args
+        except ValueError:
+            raise ValueError(_('Incorrect arguments to "%s" should be: %s') %
+                             (self.fn_name, example))
+
+    def result(self):
+        strings = function.resolve(self._strings)
+        if (isinstance(strings, basestring) or
+                not isinstance(strings, collections.Sequence)):
+            raise TypeError(_('"%s" must operate on a list') % self.fn_name)
+
+        delim = function.resolve(self._delim)
+        if not isinstance(delim, basestring):
+            raise TypeError(_('"%s" delimiter must be a string') % self.fn_name)
+
+        def ensure_string(s):
+            if s is None:
                 return ''
+            if not isinstance(s, basestring):
+                raise TypeError(_('Items to join must be strings'))
+            return s
 
-            raise TypeError(_('Arguments to "Fn::Select" not fully resolved'))
+        return delim.join(ensure_string(s) for s in strings)
 
-        return _resolve(lambda k, v: k == 'Fn::Select', handle_select, s,
-                        transform)
 
-    @staticmethod
-    def resolve_joins(s, transform=None):
-        '''
-        Resolve constructs of the form { "Fn::Join" : [ "delim", [ "str1",
-                                                                   "str2" ] }
-        '''
-        def handle_join(args):
-            if not isinstance(args, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Join" must be a list'))
+class Split(function.Function):
+    '''
+    A function for splitting strings.
 
-            try:
-                delim, strings = args
-            except ValueError:
-                example = '"Fn::Join" : [ " ", [ "str1", "str2"]]'
-                raise ValueError(_('Incorrect arguments to '
-                                   '"Fn::Join" should be: %s') %
-                                 example)
+    Takes the form::
 
-            if not isinstance(strings, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Join" '
-                                  'not fully resolved'))
+        { "Fn::Split" : [ "<delim>", "<string_1><delim><string_2>..." ] }
 
-            def empty_for_none(v):
-                if v is None:
-                    return ''
-                else:
-                    return v
+    And resolves to::
 
-            return delim.join(empty_for_none(value) for value in strings)
+        [ "<string_1>", "<string_2>", ... ]
+    '''
 
-        return _resolve(lambda k, v: k == 'Fn::Join', handle_join, s,
-                        transform)
+    def __init__(self, stack, fn_name, args):
+        super(Split, self).__init__(stack, fn_name, args)
 
-    @staticmethod
-    def resolve_split(s, transform=None):
-        '''
-        Split strings in Fn::Split to a list of sub strings
-        eg the following
-        { "Fn::Split" : [ ",", "str1,str2,str3,str4"]}
-        is reduced to
-        {["str1", "str2", "str3", "str4"]}
-        '''
-        def handle_split(args):
-            if not isinstance(args, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Split" must be a list'))
+        example = '"%s" : [ ",", "str1,str2"]]' % self.fn_name
+        if isinstance(self.args, (basestring, collections.Mapping)):
+            raise TypeError(_('Incorrect arguments to "%s" should be: %s') %
+                            (self.fn_name, example))
 
-            example = '"Fn::Split" : [ ",", "str1, str2"]]'
-            try:
-                delim, strings = args
-            except ValueError:
-                raise ValueError(_('Incorrect arguments to "Fn::Split" '
-                                   'should be: %s') % example)
-            if not isinstance(strings, basestring):
-                raise TypeError(_('Incorrect arguments to '
-                                  '"Fn::Split" should be: %s') %
-                                example)
-            return strings.split(delim)
-        return _resolve(lambda k, v: k == 'Fn::Split', handle_split, s,
-                        transform)
+        try:
+            self._delim, self._strings = self.args
+        except ValueError:
+            raise ValueError(_('Incorrect arguments to "%s" should be: %s') %
+                             (self.fn_name, example))
 
-    @staticmethod
-    def resolve_replace(s, transform=None):
-        """
-        Resolve constructs of the form::
+    def result(self):
+        strings = function.resolve(self._strings)
 
-          {"Fn::Replace": [
-            {'$var1': 'foo', '%var2%': 'bar'},
-            '$var1 is %var2%'
-          ]}
+        if not isinstance(self._delim, basestring):
+            raise TypeError(_("Delimiter for %s must be string") %
+                            self.fn_name)
+        if not isinstance(strings, basestring):
+            raise TypeError(_("String to split must be string; got %s") %
+                            type(strings))
 
-        This is implemented using python str.replace on each key.
-        """
-        def handle_replace(args):
-            if not isinstance(args, (list, tuple)):
-                raise TypeError(_('Arguments to "Fn::Replace" must be a list'))
+        return strings.split(self._delim)
 
-            try:
-                mapping, string = args
-            except ValueError:
-                example = ('{"Fn::Replace": '
-                           '[ {"$var1": "foo", "%var2%": "bar"}, '
-                           '"$var1 is %var2%"]}')
-                raise ValueError(_('Incorrect arguments to '
-                                   '"Fn::Replace" should be: %s') %
-                                 example)
 
-            if not isinstance(mapping, dict):
-                raise TypeError(
-                    _('Arguments to "Fn::Replace" not fully resolved'))
-            if not isinstance(string, basestring):
-                raise TypeError(
-                    _('Arguments to "Fn::Replace" not fully resolved'))
+class Replace(function.Function):
+    '''
+    A function for performing string subsitutions.
 
-            for k, v in mapping.items():
-                if v is None:
-                    v = ''
-                if isinstance(v, (int, float)):
-                    v = str(v)
-                if not isinstance(v, basestring):
-                    raise TypeError(
-                        _('"Fn::Replace" value(%(value)s) for'
-                          ' "%(key)s" is not a string') %
-                        dict(value=str(v), key=k))
-                string = string.replace(k, v)
-            return string
+    Takes the form::
 
-        return _resolve(lambda k, v: k == 'Fn::Replace', handle_replace, s,
-                        transform)
+        { "Fn::Replace" : [
+            { "<key_1>": "<value_1>", "<key_2>": "<value_2>", ... },
+            "<key_1> <key_2>"
+          ] }
 
-    @staticmethod
-    def resolve_base64(s, transform=None):
-        '''
-        Resolve constructs of the form { "Fn::Base64" : "string" }
-        '''
-        def handle_base64(string):
-            if not isinstance(string, basestring):
-                raise TypeError(_('Arguments to "Fn::Base64" '
-                                  'not fully resolved'))
-            return string
+    And resolves to::
 
-        return _resolve(lambda k, v: k == 'Fn::Base64', handle_base64, s,
-                        transform)
+        "<value_1> <value_2>"
 
-    @staticmethod
-    def resolve_member_list_to_map(s, transform=None):
-        '''
-        Resolve constructs of the form::
+    This is implemented using python str.replace on each key. The order in
+    which replacements are performed is undefined.
+    '''
 
-          {'Fn::MemberListToMap': ['Name', 'Value', ['.member.0.Name=key',
-                                                     '.member.0.Value=door']]}
+    def __init__(self, stack, fn_name, args):
+        super(Replace, self).__init__(stack, fn_name, args)
 
-        The first two arguments are the names of the key and value.
-        '''
+        self._mapping, self._string = self._parse_args()
 
-        def handle_member_list_to_map(args):
+        if not isinstance(self._mapping, collections.Mapping):
+            raise TypeError(_('"%s" parameters must be a mapping') %
+                            self.fn_name)
+
+    def _parse_args(self):
+
+        example = ('{"%s": '
+                   '[ {"$var1": "foo", "%%var2%%": "bar"}, '
+                   '"$var1 is %%var2%%"]}' % self.fn_name)
+
+        if isinstance(self.args, (basestring, collections.Mapping)):
+            raise TypeError(_('Incorrect arguments to "%s" should be: %s') %
+                            (self.fn_name, example))
+
+        try:
+            mapping, string = self.args
+        except ValueError:
+            raise ValueError(_('Incorrect arguments to "%s" should be: %s') %
+                             (self.fn_name, example))
+        else:
+            return mapping, string
+
+    def result(self):
+        template = function.resolve(self._string)
+        mapping = function.resolve(self._mapping)
+
+        if not isinstance(template, basestring):
+            raise TypeError(_('"%s" template must be a string') % self.fn_name)
+
+        if not isinstance(mapping, collections.Mapping):
+            raise TypeError(_('"%s" params must be a map') % self.fn_name)
+
+        def replace(string, change):
+            placeholder, value = change
+
+            if not isinstance(placeholder, basestring):
+                raise TypeError(_('"%s" param placeholders must be strings') %
+                                self.fn_name)
+
+            if value is None:
+                value = ''
+
+            if not isinstance(value, (basestring, int, long, float, bool)):
+                raise TypeError(_('"%s" params must be strings or numbers') %
+                                self.fn_name)
+
+            return string.replace(placeholder, unicode(value))
+
+        return reduce(replace, self._mapping.iteritems(),
+                      template)
+
+
+class Base64(function.Function):
+    '''
+    A placeholder function for converting to base64.
+
+    Takes the form::
+
+        { "Fn::Base64" : "<string>" }
+
+    This function actually performs no conversion. It is included for the
+    benefit of templates that convert UserData to Base64. Heat accepts UserData
+    in plain text.
+    '''
+
+    def result(self):
+        resolved = function.resolve(self.args)
+        if not isinstance(resolved, basestring):
+            raise TypeError(_('"%s" argument must be a string') % self.fn_name)
+        return resolved
+
+
+class MemberListToMap(function.Function):
+    '''
+    A function for converting lists containing enumerated keys and values to
+    a mapping.
+
+    Takes the form::
+
+        { 'Fn::MemberListToMap' : [ 'Name',
+                                    'Value',
+                                    [ '.member.0.Name=<key_0>',
+                                      '.member.0.Value=<value_0>',
+                                      ... ] ] }
+
+    And resolves to::
+
+        { "<key_0>" : "<value_0>", ... }
+
+    The first two arguments are the names of the key and value.
+    '''
+
+    def __init__(self, stack, fn_name, args):
+        super(MemberListToMap, self).__init__(stack, fn_name, args)
+
+        try:
+            self._keyname, self._valuename, self._list = self.args
+        except ValueError:
             correct = '''
             {'Fn::MemberListToMap': ['Name', 'Value',
                                      ['.member.0.Name=key',
                                       '.member.0.Value=door']]}
             '''
-            if not isinstance(args, (list, tuple)):
-                raise TypeError(_('Wrong Arguments try: "%s"') % correct)
-            if len(args) != 3:
-                raise TypeError(_('Wrong Arguments try: "%s"') % correct)
-            if not isinstance(args[0], basestring):
-                raise TypeError(_('Wrong Arguments try: "%s"') % correct)
-            if not isinstance(args[1], basestring):
-                raise TypeError(_('Wrong Arguments try: "%s"') % correct)
-            if not isinstance(args[2], (list, tuple)):
-                raise TypeError(_('Wrong Arguments try: "%s"') % correct)
+            raise TypeError(_('Wrong Arguments try: "%s"') % correct)
 
-            partial = {}
-            for item in args[2]:
-                sp = item.split('=')
-                partial[sp[0]] = sp[1]
-            return aws_utils.extract_param_pairs(partial,
-                                                 prefix='',
-                                                 keyname=args[0],
-                                                 valuename=args[1])
+        if not isinstance(self._keyname, basestring):
+            raise TypeError(_('%s Key Name must be a string') % self.fn_name)
 
-        return _resolve(lambda k, v: k == 'Fn::MemberListToMap',
-                        handle_member_list_to_map, s, transform)
+        if not isinstance(self._valuename, basestring):
+            raise TypeError(_('%s Value Name must be a string') % self.fn_name)
 
-    @staticmethod
-    def resolve_resource_facade(s, stack, transform=None):
-        '''
-        Resolve constructs of the form {'Fn::ResourceFacade': 'Metadata'}
-        '''
-        resource_attributes = ('Metadata', 'DeletionPolicy', 'UpdatePolicy')
+    def result(self):
+        member_list = function.resolve(self._list)
 
-        def handle_resource_facade(arg):
-            if arg not in resource_attributes:
-                raise ValueError(
-                    _('Incorrect arguments to "Fn::ResourceFacade" '
-                      'should be one of: %s') % str(resource_attributes))
+        if not isinstance(member_list, collections.Iterable):
+            raise TypeError(_('Member list must be a list'))
+
+        def item(s):
+            if not isinstance(s, basestring):
+                raise TypeError(_("Member list items must be strings"))
+            return s.split('=', 1)
+
+        partials = dict(item(s) for s in member_list)
+        return aws_utils.extract_param_pairs(partials,
+                                             prefix='',
+                                             keyname=self._keyname,
+                                             valuename=self._valuename)
+
+
+class ResourceFacade(function.Function):
+    '''
+    A function for obtaining data from the facade resource from within the
+    corresponding provider template.
+
+    Takes the form::
+
+        { "Fn::ResourceFacade": "<attribute_type>" }
+
+    where the valid attribute types are "Metadata", "DeletionPolicy" and
+    "UpdatePolicy".
+    '''
+
+    _RESOURCE_ATTRIBUTES = (
+        METADATA, DELETION_POLICY, UPDATE_POLICY,
+    ) = (
+        'Metadata', 'DeletionPolicy', 'UpdatePolicy'
+    )
+
+    def __init__(self, stack, fn_name, args):
+        super(ResourceFacade, self).__init__(stack, fn_name, args)
+
+        if self.args not in self._RESOURCE_ATTRIBUTES:
+            allowed = ', '.join(self._RESOURCE_ATTRIBUTES)
+            raise ValueError(_('Incorrect arguments to "%s" '
+                               'should be one of: %s') % (fn_name, allowed))
+
+    def result(self):
+        attr = function.resolve(self.args)
+
+        if attr == self.METADATA:
+            return self.stack.parent_resource.metadata
+        elif attr == self.UPDATE_POLICY:
+            return self.stack.parent_resource.t.get(attr, {})
+        elif attr == self.DELETION_POLICY:
             try:
-                if arg == 'Metadata':
-                    return stack.parent_resource.metadata
-                return stack.parent_resource.t[arg]
+                return self.stack.parent_resource.t[attr]
             except KeyError:
-                raise KeyError(_('"Fn::ResourceFacade" "%s" is not '
-                                 'specified in parent resource') %
-                               arg)
-
-        return _resolve(lambda k, v: k == 'Fn::ResourceFacade',
-                        handle_resource_facade,
-                        s, transform)
-
-    def param_schemata(self):
-        parameters = self[PARAMETERS].iteritems()
-        return dict((name, ParamSchema(schema)) for name, schema in parameters)
-
-
-def _resolve(match, handle, snippet, transform=None):
-    '''
-    Resolve constructs in a snippet of a template. The supplied match function
-    should return True if a particular key-value pair should be substituted,
-    and the handle function should return the correct substitution when passed
-    the argument list as parameters.
-
-    Returns a copy of the original snippet with the substitutions to handle
-    functions performed.
-    '''
-
-    recurse = lambda s: _resolve(match, handle, s, transform)
-
-    if isinstance(snippet, dict):
-        if len(snippet) == 1:
-            k, v = snippet.items()[0]
-            if match(k, v):
-                if transform:
-                    return handle(transform(v))
-                else:
-                    return handle(v)
-        return dict((k, recurse(v)) for k, v in snippet.items())
-    elif isinstance(snippet, list):
-        return [recurse(s) for s in snippet]
-    return snippet
+                # TODO(zaneb): This should have a default!
+                raise KeyError(_('"%s" key "%s" not found') % (self.fn_name,
+                                                               attr))

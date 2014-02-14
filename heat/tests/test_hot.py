@@ -14,6 +14,7 @@
 from heat.common import template_format
 from heat.common import exception
 from heat.engine import environment
+from heat.engine import function
 from heat.engine import parser
 from heat.engine import hot
 from heat.engine import parameters
@@ -34,15 +35,7 @@ class HOTemplateTest(HeatTestCase):
 
     @staticmethod
     def resolve(snippet, template, stack=None):
-        if stack is not None:
-            params = stack.parameters
-            resources = stack.resources
-        else:
-            params = {}
-            resources = {}
-
-        static = parser.resolve_static_data(template, stack, params, snippet)
-        return parser.resolve_runtime_data(template, resources, static)
+        return function.resolve(template.parse(stack, snippet))
 
     def test_defaults(self):
         """Test default content behavior of HOT template."""
@@ -279,7 +272,7 @@ class StackTest(test_parser.StackTest):
     """Test stack function when stack was created from HOT template."""
 
     def resolve(self, snippet):
-        return HOTemplateTest.resolve(snippet, self.stack.t, self.stack)
+        return function.resolve(self.stack.t.parse(self.stack, snippet))
 
     @utils.stack_delete_after
     def test_get_attr(self):
@@ -314,6 +307,10 @@ class StackTest(test_parser.StackTest):
             # resource name.
             self.assertEqual({'Value': 'resource1'}, self.resolve(snippet))
             # test invalid reference
+
+        self.assertRaises(exception.InvalidTemplateAttribute,
+                          self.resolve,
+                          {'Value': {'get_attr': ['resource99', 'foo']}})
 
         rsrc.state_set(rsrc.CREATE, rsrc.COMPLETE)
         self.assertRaises(exception.InvalidTemplateAttribute,
