@@ -14,8 +14,6 @@
 from neutronclient.common.exceptions import NeutronClientException
 
 from heat.common import exception
-from heat.engine import function
-from heat.engine.properties import Properties
 from heat.engine import resource
 from heat.engine import scheduler
 from heat.openstack.common import log as logging
@@ -71,7 +69,7 @@ class NeutronResource(resource.Resource):
 
         return props
 
-    def prepare_update_properties(self, json_snippet):
+    def prepare_update_properties(self, definition):
         '''
         Prepares the property values so that they can be passed directly to
         the Neutron update call.
@@ -79,11 +77,7 @@ class NeutronResource(resource.Resource):
         Removes any properties which are not update_allowed, then processes
         as for prepare_properties.
         '''
-        p = Properties(self.properties_schema,
-                       json_snippet.get('Properties', {}),
-                       function.resolve,
-                       self.name,
-                       self.context)
+        p = definition.properties(self.properties_schema, self.context)
         update_props = dict((k, v) for k, v in p.items()
                             if p.props.get(k).schema.update_allowed)
 
