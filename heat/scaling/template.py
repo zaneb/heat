@@ -13,6 +13,8 @@
 
 from heat.common import short_id
 
+from heat.engine import template
+
 
 def resource_templates(old_resources, resource_definition,
                        num_resources, num_replace):
@@ -36,3 +38,12 @@ def resource_templates(old_resources, resource_definition,
                 yield old_name, old_template
         else:
             yield short_id.generate_id(), resource_definition
+
+
+def make_template(resource_definitions,
+                  version=('heat_template_version', '2013-05-23')):
+    tmpl = template.Template(dict([version]))
+    for name, defn in resource_definitions:
+        tmpl.add_resource(defn, name)
+
+    return tmpl
