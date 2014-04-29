@@ -115,10 +115,9 @@ class Stack(collections.Mapping):
     @property
     def resources(self):
         if self._resources is None:
-            template_resources = self.t[self.t.RESOURCES]
             self._resources = dict((name, resource.Resource(name, data, self))
                                    for (name, data) in
-                                   template_resources.items())
+                                   self.t.resource_definitions(self).items())
         return self._resources
 
     @property
@@ -263,7 +262,9 @@ class Stack(collections.Mapping):
 
     def __setitem__(self, key, resource):
         '''Set the resource with the specified name to a specific value.'''
+        template = resource.stack.t
         resource.stack = self
+        resource.t = template.resource_definitions(self)[key]
         resource.reparse()
         self.resources[key] = resource
 
