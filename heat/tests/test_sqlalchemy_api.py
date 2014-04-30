@@ -105,7 +105,7 @@ class SqlAlchemyTest(HeatTestCase):
                              stack_user_project_id=stack_user_project_id)
         with utils.UUIDStub(stack_id):
             stack.store()
-        return (t, stack)
+        return (template, stack)
 
     def _mock_create(self, mocks):
         fc = fakes.FakeClient()
@@ -245,9 +245,10 @@ class SqlAlchemyTest(HeatTestCase):
 
     def test_encryption(self):
         stack_name = 'test_encryption'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
+        resource_defns = tmpl.resource_definitions(stack)
         cs = MyResource('cs_encryption',
-                        t['Resources']['WebServer'],
+                        resource_defns['WebServer'],
                         stack)
 
         # This gives the fake cloud server an id and created_time attribute

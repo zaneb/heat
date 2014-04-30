@@ -119,8 +119,9 @@ class UserTest(HeatTestCase):
         fakes.FakeKeystoneClient.create_stack_domain_project(
             stack.id).AndReturn(project_id)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.User(resource_name,
-                         t['Resources'][resource_name],
+                         resource_defns[resource_name],
                          stack)
         rsrc._store()
 
@@ -225,8 +226,9 @@ class UserTest(HeatTestCase):
         t['Resources']['CfnUser']['Properties']['Policies'] = ['NoExistBad']
         stack = utils.parse_stack(t)
         resource_name = 'CfnUser'
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.User(resource_name,
-                         t['Resources'][resource_name],
+                         resource_defns[resource_name],
                          stack)
         self.assertRaises(exception.InvalidTemplateAttribute,
                           rsrc.handle_create)
@@ -296,8 +298,9 @@ class AccessKeyTest(HeatTestCase):
         return rsrc
 
     def create_access_key(self, t, stack, resource_name):
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.AccessKey(resource_name,
-                              t['Resources'][resource_name],
+                              resource_defns[resource_name],
                               stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -377,8 +380,9 @@ class AccessKeyTest(HeatTestCase):
         stack = utils.parse_stack(t)
         stack['CfnUser'].resource_id = self.fc.user_id
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.AccessKey('HostKeys',
-                              t['Resources']['HostKeys'],
+                              resource_defns['HostKeys'],
                               stack)
         create = scheduler.TaskRunner(rsrc.create)
         self.assertRaises(exception.ResourceFailure, create)
@@ -397,8 +401,9 @@ class AccessPolicyTest(HeatTestCase):
         stack = utils.parse_stack(t)
 
         resource_name = 'WebServerAccessPolicy'
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.AccessPolicy(resource_name,
-                                 t['Resources'][resource_name],
+                                 resource_defns[resource_name],
                                  stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
@@ -409,8 +414,9 @@ class AccessPolicyTest(HeatTestCase):
         t['Resources'][resource_name]['Properties']['AllowedResources'] = []
         stack = utils.parse_stack(t)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.AccessPolicy(resource_name,
-                                 t['Resources'][resource_name],
+                                 resource_defns[resource_name],
                                  stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
@@ -429,8 +435,9 @@ class AccessPolicyTest(HeatTestCase):
         resource_name = 'WebServerAccessPolicy'
         stack = utils.parse_stack(t)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.AccessPolicy(resource_name,
-                                 t['Resources'][resource_name],
+                                 resource_defns[resource_name],
                                  stack)
         self.assertRaises(resource.UpdateReplace,
                           rsrc.handle_update, {}, {}, {})
@@ -440,8 +447,9 @@ class AccessPolicyTest(HeatTestCase):
         resource_name = 'WebServerAccessPolicy'
         stack = utils.parse_stack(t)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = user.AccessPolicy(resource_name,
-                                 t['Resources'][resource_name],
+                                 resource_defns[resource_name],
                                  stack)
         self.assertTrue(rsrc.access_allowed('WikiDatabase'))
         self.assertFalse(rsrc.access_allowed('NotWikiDatabase'))

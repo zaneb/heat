@@ -105,12 +105,14 @@ class StackResourceTest(HeatTestCase):
                                  MyStackResource)
         resource._register_class('GenericResource',
                                  generic_rsrc.GenericResource)
+        self.ws_resname = "provider_resource"
         t = parser.Template({'Resources':
-                             {"provider_resource": ws_res_snippet}})
+                             {self.ws_resname: ws_res_snippet}})
         self.parent_stack = parser.Stack(utils.dummy_context(), 'test_stack',
                                          t, stack_id=str(uuid.uuid4()))
+        resource_defns = t.resource_definitions(self.parent_stack)
         self.parent_resource = MyStackResource('test',
-                                               ws_res_snippet,
+                                               resource_defns[self.ws_resname],
                                                self.parent_stack)
         self.templ = template_format.parse(param_template)
         self.simple_template = template_format.parse(simple_template)
@@ -146,9 +148,12 @@ class StackResourceTest(HeatTestCase):
         mock_template_class.return_value = 'parsed_template'
         mock_env_class.return_value = 'environment'
         template = template_format.parse(param_template)
-        parent_resource = MyImplementedStackResource('test',
-                                                     ws_res_snippet,
-                                                     self.parent_stack)
+        parent_t = self.parent_stack.t
+        resource_defns = parent_t.resource_definitions(self.parent_stack)
+        parent_resource = MyImplementedStackResource(
+            'test',
+            resource_defns[self.ws_resname],
+            self.parent_stack)
         params = {'KeyName': 'test'}
         parent_resource.set_template(template, params)
         validation_mock = mock.Mock(return_value=None)
@@ -169,9 +174,12 @@ class StackResourceTest(HeatTestCase):
         )
 
     def test_preview_validates_nested_resources(self):
-        stack_resource = MyImplementedStackResource('test',
-                                                    ws_res_snippet,
-                                                    self.parent_stack)
+        parent_t = self.parent_stack.t
+        resource_defns = parent_t.resource_definitions(self.parent_stack)
+        stack_resource = MyImplementedStackResource(
+            'test',
+            resource_defns[self.ws_resname],
+            self.parent_stack)
         stack_resource.child_template = mock.Mock(return_value={})
         stack_resource.child_params = mock.Mock()
         exc = exception.RequestLimitExceeded(message='Validation Failed')

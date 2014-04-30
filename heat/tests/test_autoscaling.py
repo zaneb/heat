@@ -25,6 +25,7 @@ from heat.common import template_format
 from heat.engine.notification import autoscaling as notification
 from heat.engine import parser
 from heat.engine import resource
+from heat.engine import rsrc_defn
 from heat.engine.resource import Metadata
 from heat.engine.resources import autoscaling as asc
 from heat.engine.resources import image
@@ -1704,11 +1705,13 @@ class TestInstanceGroup(HeatTestCase):
     def setUp(self):
         super(TestInstanceGroup, self).setUp()
 
-        json_snippet = {'Properties':
-                        {'Size': 2, 'LaunchConfigurationName': 'foo'}}
         t = template_format.parse(as_template)
         stack = utils.parse_stack(t, params=self.params)
-        self.instance_group = asc.InstanceGroup('ig', json_snippet, stack)
+
+        defn = rsrc_defn.ResourceDefinition('ig', 'OS::Heat::InstanceGroup',
+                                            {'Size': 2,
+                                             'LaunchConfigurationName': 'foo'})
+        self.instance_group = asc.InstanceGroup('ig', defn, stack)
 
     def test_child_template(self):
         self.instance_group._create_template = mock.Mock(return_value='tpl')

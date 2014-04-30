@@ -377,7 +377,8 @@ class NeutronNetTest(HeatTestCase):
         self.m.StubOutWithMock(clients.OpenStackClients, 'keystone')
 
     def create_net(self, t, stack, resource_name):
-        rsrc = net.Net('test_net', t['Resources'][resource_name], stack)
+        resource_defns = stack.t.resource_definitions(stack)
+        rsrc = net.Net('test_net', resource_defns[resource_name], stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
         return rsrc
@@ -603,8 +604,9 @@ class NeutronProviderNetTest(HeatTestCase):
 
         t = template_format.parse(provider_network_template)
         stack = utils.parse_stack(t)
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = provider_net.ProviderNet(
-            'provider_net', t['Resources']['provider_network_vlan'], stack)
+            'provider_net', resource_defns['provider_network_vlan'], stack)
 
         return rsrc
 
@@ -701,7 +703,8 @@ class NeutronSubnetTest(HeatTestCase):
         self.m.StubOutWithMock(clients.OpenStackClients, 'keystone')
 
     def create_subnet(self, t, stack, resource_name):
-        rsrc = subnet.Subnet('test_subnet', t['Resources'][resource_name],
+        resource_defns = stack.t.resource_definitions(stack)
+        rsrc = subnet.Subnet('test_subnet', resource_defns[resource_name],
                              stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
@@ -978,16 +981,18 @@ class NeutronRouterTest(HeatTestCase):
         self.m.StubOutWithMock(clients.OpenStackClients, 'keystone')
 
     def create_router(self, t, stack, resource_name):
-        rsrc = router.Router('router', t['Resources'][resource_name], stack)
+        resource_defns = stack.t.resource_definitions(stack)
+        rsrc = router.Router('router', resource_defns[resource_name], stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
         return rsrc
 
     def create_router_interface(self, t, stack, resource_name, properties={}):
         t['Resources'][resource_name]['Properties'] = properties
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = router.RouterInterface(
             'router_interface',
-            t['Resources'][resource_name],
+            resource_defns[resource_name],
             stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
@@ -995,9 +1000,10 @@ class NeutronRouterTest(HeatTestCase):
 
     def create_gateway_router(self, t, stack, resource_name, properties={}):
         t['Resources'][resource_name]['Properties'] = properties
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = router.RouterGateway(
             'gateway',
-            t['Resources'][resource_name],
+            resource_defns[resource_name],
             stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
@@ -1285,24 +1291,36 @@ class NeutronRouterTest(HeatTestCase):
             'subnet_id': '9577cafd-8e98-4059-a2e6-8a771b4d318e',
             'port_id': '9577cafd-8e98-4059-a2e6-8a771b4d318e'}
         stack = utils.parse_stack(t)
-        res = router.RouterInterface('router_interface', json, stack)
+        resource_defns = stack.t.resource_definitions(stack)
+        res = router.RouterInterface('router_interface',
+                                     resource_defns['router_interface'],
+                                     stack)
         self.assertRaises(exception.ResourcePropertyConflict, res.validate)
         json['Properties'] = {
             'router_id': 'ae478782-53c0-4434-ab16-49900c88016c',
             'port_id': '9577cafd-8e98-4059-a2e6-8a771b4d318e'}
         stack = utils.parse_stack(t)
-        res = router.RouterInterface('router_interface', json, stack)
+        resource_defns = stack.t.resource_definitions(stack)
+        res = router.RouterInterface('router_interface',
+                                     resource_defns['router_interface'],
+                                     stack)
         self.assertIsNone(res.validate())
         json['Properties'] = {
             'router_id': 'ae478782-53c0-4434-ab16-49900c88016c',
             'subnet_id': '9577cafd-8e98-4059-a2e6-8a771b4d318e'}
         stack = utils.parse_stack(t)
-        res = router.RouterInterface('router_interface', json, stack)
+        resource_defns = stack.t.resource_definitions(stack)
+        res = router.RouterInterface('router_interface',
+                                     resource_defns['router_interface'],
+                                     stack)
         self.assertIsNone(res.validate())
         json['Properties'] = {
             'router_id': 'ae478782-53c0-4434-ab16-49900c88016c'}
         stack = utils.parse_stack(t)
-        res = router.RouterInterface('router_interface', json, stack)
+        resource_defns = stack.t.resource_definitions(stack)
+        res = router.RouterInterface('router_interface',
+                                     resource_defns['router_interface'],
+                                     stack)
         ex = self.assertRaises(exception.StackValidationFailed, res.validate)
         self.assertEqual("Either subnet_id or port_id must be specified.",
                          str(ex))

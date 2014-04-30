@@ -99,15 +99,18 @@ class VolumeTest(HeatTestCase):
     def create_volume(self, t, stack, resource_name):
         data = t['Resources'][resource_name]
         data['Properties']['AvailabilityZone'] = 'nova'
-        rsrc = vol.Volume(resource_name, data, stack)
+        rsrc = vol.Volume(resource_name,
+                          stack.t.resource_definitions(stack)[resource_name],
+                          stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
         return rsrc
 
     def create_attachment(self, t, stack, resource_name):
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.VolumeAttachment(resource_name,
-                                    t['Resources'][resource_name],
+                                    resource_defns[resource_name],
                                     stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -240,8 +243,9 @@ class VolumeTest(HeatTestCase):
         t['Resources']['DataVolume']['Properties']['AvailabilityZone'] = 'nova'
         stack = utils.parse_stack(t, stack_name=stack_name)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.Volume('DataVolume',
-                          t['Resources']['DataVolume'],
+                          resource_defns['DataVolume'],
                           stack)
         create = scheduler.TaskRunner(rsrc.create)
         self.assertRaises(exception.ResourceFailure, create)
@@ -253,8 +257,9 @@ class VolumeTest(HeatTestCase):
         t['Resources']['DataVolume']['Properties']['Tags'] = [{'Foo': 'bar'}]
         stack = utils.parse_stack(t, stack_name='test_volume_bad_tags_stack')
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.Volume('DataVolume',
-                          t['Resources']['DataVolume'],
+                          resource_defns['DataVolume'],
                           stack)
         self.assertRaises(exception.StackValidationFailed, rsrc.validate)
 
@@ -277,8 +282,9 @@ class VolumeTest(HeatTestCase):
 
         scheduler.TaskRunner(stack['DataVolume'].create)()
         self.assertEqual('available', fv.status)
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.VolumeAttachment('MountPoint',
-                                    t['Resources']['MountPoint'],
+                                    resource_defns['MountPoint'],
                                     stack)
         create = scheduler.TaskRunner(rsrc.create)
         self.assertRaises(exception.ResourceFailure, create)
@@ -706,8 +712,9 @@ class VolumeTest(HeatTestCase):
         t['Resources']['DataVolume']['DeletionPolicy'] = 'Snapshot'
         t['Resources']['DataVolume']['Properties']['AvailabilityZone'] = 'nova'
         stack = utils.parse_stack(t, stack_name=stack_name)
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.Volume('DataVolume',
-                          t['Resources']['DataVolume'],
+                          resource_defns['DataVolume'],
                           stack)
 
         create = scheduler.TaskRunner(rsrc.create)
@@ -772,8 +779,9 @@ class VolumeTest(HeatTestCase):
         t['Resources']['DataVolume']['Properties']['AvailabilityZone'] = 'nova'
         stack = utils.parse_stack(t, stack_name=stack_name)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.Volume('DataVolume',
-                          t['Resources']['DataVolume'],
+                          resource_defns['DataVolume'],
                           stack)
         create = scheduler.TaskRunner(rsrc.create)
         self.assertRaises(exception.ResourceFailure, create)
@@ -815,8 +823,9 @@ class VolumeTest(HeatTestCase):
         }
         stack = utils.parse_stack(t, stack_name=stack_name)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.CinderVolume('DataVolume',
-                                t['Resources']['DataVolume'],
+                                resource_defns['DataVolume'],
                                 stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -829,8 +838,9 @@ class VolumeTest(HeatTestCase):
         t = template_format.parse(volume_template)
         t['Resources']['DataVolume']['Properties'] = {'size': '0'}
         stack = utils.parse_stack(t)
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.CinderVolume(
-            'DataVolume', t['Resources']['DataVolume'], stack)
+            'DataVolume', resource_defns['DataVolume'], stack)
         error = self.assertRaises(exception.StackValidationFailed,
                                   rsrc.validate)
         self.assertEqual(
@@ -867,8 +877,9 @@ class VolumeTest(HeatTestCase):
         }
         stack = utils.parse_stack(t, stack_name=stack_name)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.CinderVolume('DataVolume',
-                                t['Resources']['DataVolume'],
+                                resource_defns['DataVolume'],
                                 stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -898,8 +909,9 @@ class VolumeTest(HeatTestCase):
         }
         stack = utils.parse_stack(t, stack_name=stack_name)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.CinderVolume('DataVolume',
-                                t['Resources']['DataVolume'],
+                                resource_defns['DataVolume'],
                                 stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -936,8 +948,9 @@ class VolumeTest(HeatTestCase):
         }
         stack = utils.parse_stack(t, stack_name=stack_name)
 
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.CinderVolume('DataVolume',
-                                t['Resources']['DataVolume'],
+                                resource_defns['DataVolume'],
                                 stack)
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual(u'zone1', rsrc.FnGetAtt('availability_zone'))
@@ -996,8 +1009,9 @@ class VolumeTest(HeatTestCase):
 
         scheduler.TaskRunner(stack['DataVolume'].create)()
         self.assertEqual('available', fv.status)
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = vol.CinderVolumeAttachment('MountPoint',
-                                          t['Resources']['MountPoint'],
+                                          resource_defns['MountPoint'],
                                           stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()

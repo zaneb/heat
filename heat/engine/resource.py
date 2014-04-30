@@ -124,15 +124,17 @@ class Resource(object):
 
     support_status = support.SupportStatus()
 
-    def __new__(cls, name, json, stack):
+    def __new__(cls, name, definition, stack):
         '''Create a new Resource of the appropriate class for its type.'''
+
+        assert isinstance(definition, rsrc_defn.ResourceDefinition)
 
         if cls != Resource:
             # Call is already for a subclass, so pass it through
             ResourceClass = cls
         else:
             # Select the correct subclass to instantiate
-            ResourceClass = stack.env.get_class(json.get('Type'),
+            ResourceClass = stack.env.get_class(definition.resource_type,
                                                 resource_name=name)
             assert issubclass(ResourceClass, Resource)
 
@@ -145,10 +147,7 @@ class Resource(object):
         self.stack = stack
         self.context = stack.context
         self.name = name
-        if isinstance(definition, rsrc_defn.ResourceDefinition):
-            self.t = definition
-        else:
-            self.t = self.stack.resolve_static_data(definition)
+        self.t = definition
         self.reparse()
         self.attributes = Attributes(self.name,
                                      self.attributes_schema,

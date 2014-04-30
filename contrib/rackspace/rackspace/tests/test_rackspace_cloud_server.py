@@ -129,25 +129,27 @@ class CloudServersTest(HeatTestCase):
         stack = parser.Stack(utils.dummy_context(), stack_name, template,
                              environment.Environment({'key_name': 'test'}),
                              stack_id=uuidutils.generate_uuid())
-        return (t, stack)
+        return (template, stack)
 
     def _setup_test_server(self, return_server, name, image_id=None,
                            override_name=False, stub_create=True, exit_code=0):
         stack_name = '%s_s' % name
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['image'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['image'] = \
             image_id or 'CentOS 5.2'
-        t['Resources']['WebServer']['Properties']['flavor'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['flavor'] = \
             '256 MB Server'
 
         server_name = '%s' % name
         if override_name:
-            t['Resources']['WebServer']['Properties']['name'] = \
+            tmpl.t['Resources']['WebServer']['Properties']['name'] = \
                 server_name
 
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer(server_name,
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'],
+                                          stack)
 
         self.m.StubOutWithMock(cloud_server.CloudServer, "nova")
         cloud_server.CloudServer.nova().MultipleTimes().AndReturn(self.fc)
@@ -203,13 +205,14 @@ class CloudServersTest(HeatTestCase):
 
     def test_script_raw_userdata(self):
         stack_name = 'raw_userdata_s'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['user_data_format'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['user_data_format'] = \
             'RAW'
 
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server, 'nova')
         server.nova().MultipleTimes().AndReturn(self.fc)
@@ -223,13 +226,14 @@ class CloudServersTest(HeatTestCase):
 
     def test_script_cfntools_userdata(self):
         stack_name = 'raw_userdata_s'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['user_data_format'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['user_data_format'] = \
             'HEAT_CFNTOOLS'
 
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server, 'nova')
         server.nova().MultipleTimes().AndReturn(self.fc)
@@ -243,12 +247,13 @@ class CloudServersTest(HeatTestCase):
 
     def test_validate_no_script_okay(self):
         stack_name = 'srv_val'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
         # create an server with non exist image Id
-        t['Resources']['WebServer']['Properties']['image'] = '1'
+        tmpl.t['Resources']['WebServer']['Properties']['image'] = '1'
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('server_create_image_err',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server, 'nova')
         server.nova().MultipleTimes().AndReturn(self.fc)
@@ -271,16 +276,17 @@ class CloudServersTest(HeatTestCase):
 
     def test_validate_disallowed_personality(self):
         stack_name = 'srv_val'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
         # create an server with non exist image Id
-        t['Resources']['WebServer']['Properties']['personality'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['personality'] = \
             {"/fake/path1": "fake contents1",
              "/fake/path2": "fake_contents2",
              "/fake/path3": "fake_contents3",
              "/root/.ssh/authorized_keys": "fake_contents4"}
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('server_create_image_err',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server.__class__, 'script')
         server.script = None
@@ -303,15 +309,16 @@ class CloudServersTest(HeatTestCase):
     def test_user_personality(self):
         return_server = self.fc.servers.list()[1]
         stack_name = 'srv_val'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
         # create an server with non exist image Id
-        t['Resources']['WebServer']['Properties']['personality'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['personality'] = \
             {"/fake/path1": "fake contents1",
              "/fake/path2": "fake_contents2",
              "/fake/path3": "fake_contents3"}
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('server_create_image_err',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server.__class__, 'script')
         server.script = None
@@ -349,12 +356,13 @@ class CloudServersTest(HeatTestCase):
 
     def test_validate_no_script_not_okay(self):
         stack_name = 'srv_val'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
         # create a server with non-existent image ID
-        t['Resources']['WebServer']['Properties']['image'] = '1'
+        tmpl.t['Resources']['WebServer']['Properties']['image'] = '1'
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('server_create_image_err',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(image.ImageConstraint, "validate")
         image.ImageConstraint.validate(
@@ -377,15 +385,16 @@ class CloudServersTest(HeatTestCase):
         (t, stack) = self._setup_test_stack(stack_name)
 
         # create a server without an image
-        del t['Resources']['WebServer']['Properties']['image']
-        t['Resources']['WebServer']['Properties']['block_device_mapping'] = \
+        del t.t['Resources']['WebServer']['Properties']['image']
+        t.t['Resources']['WebServer']['Properties']['block_device_mapping'] = \
             [{
                 "device_name": u'vda',
                 "volume_id": "5d7e27da-6703-4f7e-9f94-1f67abef734c",
                 "delete_on_termination": False
             }]
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer('server_create_image_err',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server.__class__, 'has_userdata')
         server.has_userdata = True
@@ -405,9 +414,10 @@ class CloudServersTest(HeatTestCase):
 
     def test_private_key(self):
         stack_name = 'test_private_key'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('server_private_key',
-                                          t['Resources']['WebServer'],
+                                          resource_defns['WebServer'],
                                           stack)
 
         # This gives the fake cloud server an id and created_time attribute
@@ -622,17 +632,18 @@ class CloudServersTest(HeatTestCase):
 
     def test_validate_too_many_personality_rackspace(self):
         stack_name = 'srv_val'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
         # create an server with non exist image Id
-        t['Resources']['WebServer']['Properties']['personality'] = \
+        tmpl.t['Resources']['WebServer']['Properties']['personality'] = \
             {"/fake/path1": "fake contents1",
              "/fake/path2": "fake_contents2",
              "/fake/path3": "fake_contents3",
              "/fake/path4": "fake_contents4",
              "/fake/path5": "fake_contents5"}
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('server_create_image_err',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(server.__class__, 'script')
         server.script = None
@@ -657,12 +668,13 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'test_create_ssh_exception_recovered'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
-        t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
+        t.t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
+        t.t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
 
         server_name = 'test_create_ssh_exception_server'
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer(server_name,
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(cloud_server.CloudServer, "nova")
         cloud_server.CloudServer.nova().MultipleTimes().AndReturn(self.fc)
@@ -746,12 +758,13 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'test_create_ssh_exception_failed'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
-        t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
+        t.t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
+        t.t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
 
         server_name = 'test_create_ssh_exception_server'
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer(server_name,
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(cloud_server.CloudServer, "nova")
         cloud_server.CloudServer.nova().MultipleTimes().AndReturn(self.fc)
@@ -800,12 +813,13 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'test_create_ssh_exception_recovered'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
-        t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
+        t.t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
+        t.t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
 
         server_name = 'test_create_ssh_exception_server'
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer(server_name,
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(cloud_server.CloudServer, "nova")
         cloud_server.CloudServer.nova().MultipleTimes().AndReturn(self.fc)
@@ -889,12 +903,13 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'test_create_ssh_exception_failed'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
-        t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
+        t.t['Resources']['WebServer']['Properties']['image'] = 'CentOS 5.2'
+        t.t['Resources']['WebServer']['Properties']['flavor'] = '256 MB Server'
 
         server_name = 'test_create_ssh_exception_server'
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer(server_name,
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
 
         self.m.StubOutWithMock(cloud_server.CloudServer, "nova")
         cloud_server.CloudServer.nova().MultipleTimes().AndReturn(self.fc)
@@ -954,9 +969,10 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'admin_pass_s'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['save_admin_pass'] = True
+        t.t['Resources']['WebServer']['Properties']['save_admin_pass'] = True
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
         server._sftp_files = mock.Mock()
         server._run_ssh_command = mock.Mock(return_value=0)
 
@@ -979,9 +995,10 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'admin_pass_s'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['save_admin_pass'] = False
+        t.t['Resources']['WebServer']['Properties']['save_admin_pass'] = False
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
         server._sftp_files = mock.Mock()
         server._run_ssh_command = mock.Mock(return_value=0)
 
@@ -1004,9 +1021,10 @@ class CloudServersTest(HeatTestCase):
         stack_name = 'admin_pass_s'
         (t, stack) = self._setup_test_stack(stack_name)
 
-        t['Resources']['WebServer']['Properties']['save_admin_pass'] = None
+        t.t['Resources']['WebServer']['Properties']['save_admin_pass'] = None
+        resource_defns = t.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
         server._sftp_files = mock.Mock()
         server._run_ssh_command = mock.Mock(return_value=0)
 
@@ -1026,10 +1044,11 @@ class CloudServersTest(HeatTestCase):
         self._mock_metadata_os_distro()
         return_server = self.fc.servers.list()[1]
         stack_name = 'admin_pass_s'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
         server._sftp_files = mock.Mock()
         server._run_ssh_command = mock.Mock(return_value=0)
 
@@ -1045,18 +1064,20 @@ class CloudServersTest(HeatTestCase):
     def test_server_handles_server_without_password(self, mock_data_get):
         mock_data_get.return_value = {}
         stack_name = 'admin_pass_s'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
         self.assertEqual('', server.FnGetAtt('admin_pass'))
 
     @mock.patch.object(resource.Resource, 'data')
     def test_server_has_admin_pass_attribute_available(self, mock_data_get):
         mock_data_get.return_value = {'admin_pass': 'foo'}
         stack_name = 'admin_pass_s'
-        (t, stack) = self._setup_test_stack(stack_name)
+        (tmpl, stack) = self._setup_test_stack(stack_name)
 
+        resource_defns = tmpl.resource_definitions(stack)
         server = cloud_server.CloudServer('WebServer',
-                                          t['Resources']['WebServer'], stack)
+                                          resource_defns['WebServer'], stack)
         self.assertEqual('foo', server.FnGetAtt('admin_pass'))

@@ -24,6 +24,7 @@ from heat.engine import parser
 from heat.engine import properties
 from heat.engine import resource
 from heat.engine import resources
+from heat.engine import rsrc_defn
 from heat.engine.resources import template_resource
 
 from heat.tests.common import HeatTestCase
@@ -126,18 +127,18 @@ class ProviderTemplateTest(HeatTestCase):
                 "key5": False
             }
         }
-        json_snippet = {
-            "Type": "DummyResource",
-            "Properties": {
-                "Foo": "Bar",
-                "AList": ["one", "two", "three"],
-                "ListEmpty": [],
-                "ANum": 5,
-                "AMap": map_prop_val
-            }
+        prop_vals = {
+            "Foo": "Bar",
+            "AList": ["one", "two", "three"],
+            "ListEmpty": [],
+            "ANum": 5,
+            "AMap": map_prop_val,
         }
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  'DummyResource',
+                                                  prop_vals)
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         temp_res.validate()
         converted_params = temp_res.child_params()
         self.assertTrue(converted_params)
@@ -146,10 +147,7 @@ class ProviderTemplateTest(HeatTestCase):
         # verify String conversion
         self.assertEqual("Bar", converted_params.get("Foo"))
         # verify List conversion
-        self.assertEqual(",".join(json_snippet.get("Properties",
-                                                   {}).get("AList",
-                                                           [])),
-                         converted_params.get("AList"))
+        self.assertEqual("one,two,three", converted_params.get("AList"))
         # verify Number conversion
         self.assertEqual(5, converted_params.get("ANum"))
         # verify Map conversion
@@ -177,12 +175,10 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}, files=files), env=env,
                              stack_id=str(uuid.uuid4()))
 
-        json_snippet = {
-            "Type": "DummyResource",
-        }
-
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  "DummyResource")
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         self.assertIsNone(temp_res.validate())
 
     def test_attributes_missing(self):
@@ -197,10 +193,6 @@ class ProviderTemplateTest(HeatTestCase):
             properties_schema = {}
             attributes_schema = {"Foo": "A test attribute"}
 
-        json_snippet = {
-            "Type": "DummyResource",
-        }
-
         env = environment.Environment()
         resource._register_class('DummyResource', DummyResource)
         env.load({'resource_registry':
@@ -209,8 +201,10 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}, files=files), env=env,
                              stack_id=str(uuid.uuid4()))
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  "DummyResource")
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         self.assertRaises(exception.StackValidationFailed,
                           temp_res.validate)
 
@@ -230,13 +224,6 @@ class ProviderTemplateTest(HeatTestCase):
                                                    required=True)}
             attributes_schema = {}
 
-        json_snippet = {
-            "Type": "DummyResource",
-            "Properties": {
-                "Foo": "bar",
-            },
-        }
-
         env = environment.Environment()
         resource._register_class('DummyResource', DummyResource)
         env.load({'resource_registry':
@@ -245,8 +232,11 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}, files=files), env=env,
                              stack_id=str(uuid.uuid4()))
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  "DummyResource",
+                                                  {"Foo": "bar"})
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         self.assertIsNone(temp_res.validate())
 
     def test_properties_missing(self):
@@ -263,10 +253,6 @@ class ProviderTemplateTest(HeatTestCase):
                                                    required=True)}
             attributes_schema = {}
 
-        json_snippet = {
-            "Type": "DummyResource",
-        }
-
         env = environment.Environment()
         resource._register_class('DummyResource', DummyResource)
         env.load({'resource_registry':
@@ -275,8 +261,10 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}, files=files), env=env,
                              stack_id=str(uuid.uuid4()))
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  "DummyResource")
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         self.assertRaises(exception.StackValidationFailed,
                           temp_res.validate)
 
@@ -292,13 +280,6 @@ class ProviderTemplateTest(HeatTestCase):
             properties_schema = {}
             attributes_schema = {}
 
-        json_snippet = {
-            "Type": "DummyResource",
-            "Properties": {
-                "Blarg": "wibble",
-            },
-        }
-
         env = environment.Environment()
         resource._register_class('DummyResource', DummyResource)
         env.load({'resource_registry':
@@ -307,8 +288,11 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}, files=files), env=env,
                              stack_id=str(uuid.uuid4()))
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  "DummyResource",
+                                                  {"Blarg": "wibble"})
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         self.assertRaises(exception.StackValidationFailed,
                           temp_res.validate)
 
@@ -325,13 +309,6 @@ class ProviderTemplateTest(HeatTestCase):
                                  properties.Schema(properties.Schema.MAP)}
             attributes_schema = {}
 
-        json_snippet = {
-            "Type": "DummyResource",
-            "Properties": {
-                "Foo": "bar",
-            },
-        }
-
         env = environment.Environment()
         resource._register_class('DummyResource', DummyResource)
         env.load({'resource_registry':
@@ -340,8 +317,11 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}, files=files), env=env,
                              stack_id=str(uuid.uuid4()))
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  "DummyResource",
+                                                  {"Foo": "bar"})
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      json_snippet, stack)
+                                                      definition, stack)
         self.assertRaises(exception.StackValidationFailed,
                           temp_res.validate)
 
@@ -399,20 +379,22 @@ class ProviderTemplateTest(HeatTestCase):
                      allowed_schemes=('http', 'https')).AndReturn(test_templ)
         parsed_test_templ = template_format.parse(test_templ)
         self.m.ReplayAll()
-        json_snippet = {
-            "Type": test_templ_name,
-            "Properties": {
-                "KeyName": "mykeyname",
-                "DBName": "wordpress1",
-                "DBUsername": "wpdbuser",
-                "DBPassword": "wpdbpass",
-                "DBRootPassword": "wpdbrootpass",
-                "LinuxDistribution": "U10"
-            }
-        }
+
         stack = parser.Stack(utils.dummy_context(), 'test_stack',
                              parser.Template({}), stack_id=str(uuid.uuid4()))
-        templ_resource = resource.Resource("test_templ_resource", json_snippet,
+
+        properties = {
+            "KeyName": "mykeyname",
+            "DBName": "wordpress1",
+            "DBUsername": "wpdbuser",
+            "DBPassword": "wpdbpass",
+            "DBRootPassword": "wpdbrootpass",
+            "LinuxDistribution": "U10"
+        }
+        definition = rsrc_defn.ResourceDefinition("test_templ_resource",
+                                                  test_templ_name,
+                                                  properties)
+        templ_resource = resource.Resource("test_templ_resource", definition,
                                            stack)
         self.m.VerifyAll()
         self.assertIsInstance(templ_resource,
@@ -421,7 +403,7 @@ class ProviderTemplateTest(HeatTestCase):
             self.assertIn(prop, templ_resource.properties)
         for attrib in parsed_test_templ.get("Outputs", {}):
             self.assertIn(attrib, templ_resource.attributes)
-        for k, v in json_snippet.get("Properties").items():
+        for k, v in properties.items():
             self.assertEqual(v, templ_resource.properties[k])
         self.assertEqual(
             {'WordPress_Single_Instance.yaml':
@@ -459,8 +441,10 @@ class ProviderTemplateTest(HeatTestCase):
                                       'file')).AndReturn(minimal_temp)
         self.m.ReplayAll()
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  'Test::Frodo')
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      {"Type": 'Test::Frodo'},
+                                                      definition,
                                                       stack)
         self.assertIsNone(temp_res.validate())
         self.m.VerifyAll()
@@ -476,8 +460,10 @@ class ProviderTemplateTest(HeatTestCase):
                              parser.Template({}), env=env,
                              stack_id=str(uuid.uuid4()))
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  'Test::Flippy')
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      {"Type": 'Test::Flippy'},
+                                                      definition,
                                                       stack)
 
         self.assertRaises(exception.StackValidationFailed, temp_res.validate)
@@ -503,8 +489,10 @@ class ProviderTemplateTest(HeatTestCase):
             .AndRaise(urlfetch.URLFetchError(_('Failed to retrieve template')))
         self.m.ReplayAll()
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  'Test::Frodo')
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      {"Type": 'Test::Frodo'},
+                                                      definition,
                                                       stack)
         self.assertRaises(exception.StackValidationFailed, temp_res.validate)
         self.m.VerifyAll()
@@ -529,8 +517,10 @@ class ProviderTemplateTest(HeatTestCase):
             .AndRaise(urlfetch.URLFetchError(_('Failed to retrieve template')))
         self.m.ReplayAll()
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  'Test::Flippy')
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      {"Type": 'Test::Flippy'},
+                                                      definition,
                                                       stack)
         self.assertRaises(exception.StackValidationFailed, temp_res.validate)
         self.m.VerifyAll()
@@ -551,8 +541,10 @@ class ProviderTemplateTest(HeatTestCase):
 
         self.m.ReplayAll()
 
+        definition = rsrc_defn.ResourceDefinition('test_t_res',
+                                                  'Test::Flippy')
         temp_res = template_resource.TemplateResource('test_t_res',
-                                                      {"Type": 'Test::Flippy'},
+                                                      definition,
                                                       stack)
         self.assertRaises(exception.StackValidationFailed, temp_res.validate)
         self.m.VerifyAll()

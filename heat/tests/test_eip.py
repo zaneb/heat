@@ -160,8 +160,9 @@ class EIPTest(HeatTestCase):
         force_networking('neutron')
 
     def create_eip(self, t, stack, resource_name):
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = eip.ElasticIp(resource_name,
-                             t['Resources'][resource_name],
+                             resource_defns[resource_name],
                              stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -169,8 +170,9 @@ class EIPTest(HeatTestCase):
         return rsrc
 
     def create_association(self, t, stack, resource_name):
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = eip.ElasticIpAssociation(resource_name,
-                                        t['Resources'][resource_name],
+                                        resource_defns[resource_name],
                                         stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -249,8 +251,9 @@ class EIPTest(HeatTestCase):
         t = template_format.parse(eip_template)
         stack = utils.parse_stack(t)
         resource_name = 'IPAddress'
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = eip.ElasticIp(resource_name,
-                             t['Resources'][resource_name],
+                             resource_defns[resource_name],
                              stack)
 
         self.assertRaises(clients.novaclient.exceptions.NotFound,
@@ -268,8 +271,9 @@ class EIPTest(HeatTestCase):
         t = template_format.parse(eip_template)
         stack = utils.parse_stack(t)
         resource_name = 'IPAddress'
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = eip.ElasticIp(resource_name,
-                             t['Resources'][resource_name],
+                             resource_defns[resource_name],
                              stack)
         rsrc.resource_id = 'fake_id'
         rsrc.handle_delete()
@@ -322,8 +326,9 @@ class AllocTest(HeatTestCase):
         }})
 
     def create_eip(self, t, stack, resource_name):
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = eip.ElasticIp(resource_name,
-                             t['Resources'][resource_name],
+                             resource_defns[resource_name],
                              stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
@@ -331,8 +336,9 @@ class AllocTest(HeatTestCase):
         return rsrc
 
     def create_association(self, t, stack, resource_name):
+        resource_defns = stack.t.resource_definitions(stack)
         rsrc = eip.ElasticIpAssociation(resource_name,
-                                        t['Resources'][resource_name],
+                                        resource_defns[resource_name],
                                         stack)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()

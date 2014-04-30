@@ -161,8 +161,9 @@ class VPNServiceTest(HeatTestCase):
             self.VPN_SERVICE_CONF).AndReturn({'vpnservice': {'id': 'vpn123'}})
         snippet = template_format.parse(vpnservice_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         return vpnservice.VPNService('vpnservice',
-                                     snippet['Resources']['VPNService'],
+                                     resource_defns['VPNService'],
                                      self.stack)
 
     def test_create(self):
@@ -180,8 +181,9 @@ class VPNServiceTest(HeatTestCase):
         self.m.ReplayAll()
         snippet = template_format.parse(vpnservice_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         rsrc = vpnservice.VPNService('vpnservice',
-                                     snippet['Resources']['VPNService'],
+                                     resource_defns['VPNService'],
                                      self.stack)
         error = self.assertRaises(exception.ResourceFailure,
                                   scheduler.TaskRunner(rsrc.create))
@@ -308,9 +310,10 @@ class IPsecSiteConnectionTest(HeatTestCase):
                 {'ipsec_site_connection': {'id': 'con123'}})
         snippet = template_format.parse(ipsec_site_connection_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         return vpnservice.IPsecSiteConnection(
             'ipsec_site_connection',
-            snippet['Resources']['IPsecSiteConnection'],
+            resource_defns['IPsecSiteConnection'],
             self.stack)
 
     def test_create(self):
@@ -329,9 +332,10 @@ class IPsecSiteConnectionTest(HeatTestCase):
         self.m.ReplayAll()
         snippet = template_format.parse(ipsec_site_connection_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         rsrc = vpnservice.IPsecSiteConnection(
             'ipsec_site_connection',
-            snippet['Resources']['IPsecSiteConnection'],
+            resource_defns['IPsecSiteConnection'],
             self.stack)
         error = self.assertRaises(exception.ResourceFailure,
                                   scheduler.TaskRunner(rsrc.create))
@@ -458,8 +462,9 @@ class IKEPolicyTest(HeatTestCase):
                 {'ikepolicy': {'id': 'ike123'}})
         snippet = template_format.parse(ikepolicy_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         return vpnservice.IKEPolicy('ikepolicy',
-                                    snippet['Resources']['IKEPolicy'],
+                                    resource_defns['IKEPolicy'],
                                     self.stack)
 
     def test_create(self):
@@ -478,9 +483,10 @@ class IKEPolicyTest(HeatTestCase):
         self.m.ReplayAll()
         snippet = template_format.parse(ikepolicy_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         rsrc = vpnservice.IKEPolicy(
             'ikepolicy',
-            snippet['Resources']['IKEPolicy'],
+            resource_defns['IKEPolicy'],
             self.stack)
         error = self.assertRaises(exception.ResourceFailure,
                                   scheduler.TaskRunner(rsrc.create))
@@ -602,8 +608,9 @@ class IPsecPolicyTest(HeatTestCase):
                 {'ipsecpolicy': {'id': 'ips123'}})
         snippet = template_format.parse(ipsecpolicy_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         return vpnservice.IPsecPolicy('ipsecpolicy',
-                                      snippet['Resources']['IPsecPolicy'],
+                                      resource_defns['IPsecPolicy'],
                                       self.stack)
 
     def test_create(self):
@@ -622,9 +629,10 @@ class IPsecPolicyTest(HeatTestCase):
         self.m.ReplayAll()
         snippet = template_format.parse(ipsecpolicy_template)
         self.stack = utils.parse_stack(snippet)
+        resource_defns = self.stack.t.resource_definitions(self.stack)
         rsrc = vpnservice.IPsecPolicy(
             'ipsecpolicy',
-            snippet['Resources']['IPsecPolicy'],
+            resource_defns['IPsecPolicy'],
             self.stack)
         error = self.assertRaises(exception.ResourceFailure,
                                   scheduler.TaskRunner(rsrc.create))
