@@ -488,9 +488,6 @@ class StackResourceTest(HeatTestCase):
                                   disable_rollback=True,
                                   parent_resource=self.parent_resource)
 
-        self.m.StubOutWithMock(parser, 'Template')
-        parser.Template(self.templ, files={}).AndReturn(templ)
-
         self.m.StubOutWithMock(environment, 'Environment')
         environment.Environment({"KeyName": "test"}).AndReturn(env)
 
