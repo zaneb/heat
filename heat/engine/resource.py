@@ -129,12 +129,14 @@ class Resource(object):
 
         if cls != Resource:
             # Call is already for a subclass, so pass it through
-            return super(Resource, cls).__new__(cls)
+            ResourceClass = cls
+        else:
+            # Select the correct subclass to instantiate
+            ResourceClass = stack.env.get_class(json.get('Type'),
+                                                resource_name=name)
+            assert issubclass(ResourceClass, Resource)
 
-        # Select the correct subclass to instantiate
-        ResourceClass = stack.env.get_class(json.get('Type'),
-                                            resource_name=name)
-        return ResourceClass(name, json, stack)
+        return super(Resource, cls).__new__(ResourceClass)
 
     def __init__(self, name, definition, stack):
         if '/' in name:
