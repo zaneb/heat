@@ -199,7 +199,7 @@ class EIPTest(HeatTestCase):
             self.assertEqual('1', rsrc.FnGetAtt('AllocationId'))
 
             self.assertRaises(resource.UpdateReplace,
-                              rsrc.handle_update, {}, {}, {})
+                              rsrc.handle_update, rsrc.t, {}, {})
 
             self.assertRaises(exception.InvalidTemplateAttribute,
                               rsrc.FnGetAtt, 'Foo')

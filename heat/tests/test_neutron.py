@@ -18,9 +18,11 @@ from testtools import skipIf
 
 from heat.common import exception
 from heat.common import template_format
+from heat.engine.cfn import functions as cfn_funcs
 from heat.engine import clients
 from heat.engine import properties
 from heat.engine import resource
+from heat.engine import rsrc_defn
 from heat.engine.resources.neutron import net
 from heat.engine.resources.neutron.neutron import NeutronResource as qr
 from heat.engine.resources.neutron import provider_net
@@ -544,23 +546,16 @@ class NeutronNetTest(HeatTestCase):
         self.assertEqual('ACTIVE', rsrc.FnGetAtt('status'))
         self.assertRaises(
             exception.InvalidTemplateAttribute, rsrc.FnGetAtt, 'Foo')
-        update_snippet = {
-            "Type": "OS::Neutron::Net",
-            "Properties": {
-                "name": "mynet",
-                "shared": True,
-                "admin_state_up": True,
-                "dhcp_agent_ids": [
-                    "bb09cfcd-5277-473d-8336-d4ed8628ae68"
-                ]
-            }
-        }
         prop_diff = {
             "name": "mynet",
             "dhcp_agent_ids": [
                 "bb09cfcd-5277-473d-8336-d4ed8628ae68"
             ]
         }
+        props = copy.copy(rsrc.properties.data)
+        props.update(prop_diff)
+        update_snippet = rsrc_defn.ResourceDefinition(rsrc.name, rsrc.type(),
+                                                      props)
         rsrc.handle_update(update_snippet, {}, prop_diff)
 
         scheduler.TaskRunner(rsrc.delete)()
@@ -676,17 +671,16 @@ class NeutronProviderNetTest(HeatTestCase):
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
 
-        update_snippet = {
-            "Type": "OS::Neutron::ProviderNet",
-            "Properties": {
-                "name": "prov_net",
-                "shared": True,
-                "admin_state_up": True,
-                "network_type": "vlan",
-                "physical_network": "physnet_1",
-                "segmentation_id": "102"
-            }
+        props = {
+            "name": "prov_net",
+            "shared": True,
+            "admin_state_up": True,
+            "network_type": "vlan",
+            "physical_network": "physnet_1",
+            "segmentation_id": "102"
         }
+        update_snippet = rsrc_defn.ResourceDefinition(rsrc.name, rsrc.type(),
+                                                      props)
         self.assertIsNone(rsrc.handle_update(update_snippet, {}, {}))
         self.m.VerifyAll()
 
@@ -814,22 +808,21 @@ class NeutronSubnetTest(HeatTestCase):
         self.assertIn(stack['port'], stack.dependencies[stack['subnet']])
         self.assertIn(stack['port2'], stack.dependencies[stack['subnet']])
 
-        update_snippet = {
-            "Type": "OS::Neutron::Subnet",
-            "Properties": {
-                "name": 'mysubnet',
-                "network_id": {"Ref": "network"},
-                "tenant_id": "c1210485b2424d48804aad5d39c61b8f",
-                "ip_version": 4,
-                "cidr": "10.0.3.0/24",
-                "allocation_pools": [
-                    {"start": "10.0.3.20", "end": "10.0.3.150"}],
-                "dns_nameservers": ["8.8.8.8", "192.168.1.254"],
-                'host_routes': [
-                    {'destination': u'10.0.4.0/24', 'nexthop': u'10.0.3.20'}]
-            }
+        props = {
+            "name": 'mysubnet',
+            "network_id": cfn_funcs.ResourceRef(stack, "Ref", "network"),
+            "tenant_id": "c1210485b2424d48804aad5d39c61b8f",
+            "ip_version": 4,
+            "cidr": "10.0.3.0/24",
+            "allocation_pools": [
+                {"start": "10.0.3.20", "end": "10.0.3.150"}],
+            "dns_nameservers": ["8.8.8.8", "192.168.1.254"],
+            'host_routes': [
+                {'destination': u'10.0.4.0/24', 'nexthop': u'10.0.3.20'}]
         }
-        rsrc.handle_update(stack.resolve_static_data(update_snippet), {}, {})
+        update_snippet = rsrc_defn.ResourceDefinition(rsrc.name, rsrc.type(),
+                                                      props)
+        rsrc.handle_update(update_snippet, {}, {})
 
         self.assertIsNone(scheduler.TaskRunner(rsrc.delete)())
         rsrc.state_set(rsrc.CREATE, rsrc.COMPLETE, 'to delete again')
@@ -1156,19 +1149,15 @@ class NeutronRouterTest(HeatTestCase):
         self.assertEqual('3e21026f2dc94372b105808c0e721661',
                          rsrc.FnGetAtt('tenant_id'))
 
-        update_snippet = {
-            "Type": "OS::Neutron::Router",
-            "Properties": {
-                "admin_state_up": False,
-                "name": "myrouter",
-                "l3_agent_id": "63b3fd83-2c5f-4dad-b3ae-e0f83a40f216"
-            }
-        }
         prop_diff = {
             "admin_state_up": False,
             "name": "myrouter",
             "l3_agent_id": "63b3fd83-2c5f-4dad-b3ae-e0f83a40f216"
         }
+        props = copy.copy(rsrc.properties.data)
+        props.update(prop_diff)
+        update_snippet = rsrc_defn.ResourceDefinition(rsrc.name, rsrc.type(),
+                                                      props)
         rsrc.handle_update(update_snippet, {}, prop_diff)
 
         self.assertIsNone(scheduler.TaskRunner(rsrc.delete)())
@@ -1644,7 +1633,7 @@ class NeutronFloatingIPTest(HeatTestCase):
 
         self.assertEqual(u'abcd1234', fip.FnGetAtt('floating_network_id'))
         self.assertRaises(resource.UpdateReplace,
-                          fip.handle_update, {}, {}, {})
+                          fip.handle_update, fip.t, {}, {})
         scheduler.TaskRunner(fip.delete)()
         fip.state_set(fip.CREATE, fip.COMPLETE, 'to delete again')
         scheduler.TaskRunner(fip.delete)()
@@ -1723,19 +1712,17 @@ class NeutronFloatingIPTest(HeatTestCase):
         self.assertEqual('fc68ea2c-b60b-4b4f-bd82-94ec81110766',
                          p.resource_id)
 
-        update_snippet = {
-            "Type": "OS::Neutron::Port",
-            "Properties": {
-                "network_id": "xyz1234",
-                "fixed_ips": [{
-                    "subnet_id": "sub1234",
-                    "ip_address": "10.0.0.11"
-                }],
-                "name": "test_port",
-                "device_id": "d6b4d3a5-c700-476f-b609-1493dd9dadc2",
-                'device_owner': 'network:floatingip'
-            }
+        props = {
+            "network_id": "xyz1234",
+            "fixed_ips": [{
+                "subnet_id": "sub1234",
+                "ip_address": "10.0.0.11"
+            }],
+            "name": "test_port",
+            "device_id": "d6b4d3a5-c700-476f-b609-1493dd9dadc2",
+            'device_owner': 'network:floatingip'
         }
+        update_snippet = rsrc_defn.ResourceDefinition(p.name, p.type(), props)
 
         p.handle_update(update_snippet, {}, {})
 
@@ -1835,7 +1822,7 @@ class NeutronFloatingIPTest(HeatTestCase):
         port_id = p.FnGetRefId()
         self.assertEqual('%s:%s' % (fip_id, port_id), fipa_id)
         self.assertRaises(resource.UpdateReplace,
-                          fipa.handle_update, {}, {}, {})
+                          fipa.handle_update, fipa.t, {}, {})
 
         scheduler.TaskRunner(fipa.delete)()
         scheduler.TaskRunner(p.delete)()

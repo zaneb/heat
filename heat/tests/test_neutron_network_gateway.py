@@ -21,6 +21,7 @@ from heat.common import exception
 from heat.common import template_format
 from heat.engine import clients
 from heat.engine.resources.neutron import network_gateway
+from heat.engine import rsrc_defn
 from heat.engine import scheduler
 from heat.openstack.common.importutils import try_import
 from heat.tests.common import HeatTestCase
@@ -294,9 +295,10 @@ class NeutronNetworkGatewayTest(HeatTestCase):
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
 
         # update name
-        snippet_for_update = {
-            'Type': u'OS::Neutron::NetworkGatewayUpdate',
-            'Properties': {
+        snippet_for_update = rsrc_defn.ResourceDefinition(
+            rsrc.name,
+            rsrc.type(),
+            {
                 'name': u'NetworkGatewayUpdate',
                 'devices': [{
                     'id': u'e52148ca-7db9-4ec3-abe6-2c7c0ff316eb',
@@ -305,16 +307,16 @@ class NeutronNetworkGatewayTest(HeatTestCase):
                     'network_id': '6af055d3-26f6-48dd-a597-7611d7e58d35',
                     'segmentation_type': 'vlan',
                     'segmentation_id': 10}]
-            }
-        }
+            })
         prop_diff = {'name': u'NetworkGatewayUpdate'}
         self.assertIsNone(rsrc.handle_update(snippet_for_update, IgnoreArg(),
                                              prop_diff))
 
         # update connections
-        snippet_for_update = {
-            'Type': u'OS::Neutron::NetworkGateway',
-            'Properties': {
+        snippet_for_update = rsrc_defn.ResourceDefinition(
+            rsrc.name,
+            rsrc.type(),
+            {
                 'name': u'NetworkGateway',
                 'devices': [{
                     'id': u'e52148ca-7db9-4ec3-abe6-2c7c0ff316eb',
@@ -323,8 +325,7 @@ class NeutronNetworkGatewayTest(HeatTestCase):
                     'network_id': u'6af055d3-26f6-48dd-a597-7611d7e58d35',
                     'segmentation_type': u'flat',
                     'segmentation_id': 0}]
-            }
-        }
+            })
         prop_diff = {
             'connections': [{
                 'network_id': u'6af055d3-26f6-48dd-a597-7611d7e58d35',
@@ -339,9 +340,10 @@ class NeutronNetworkGatewayTest(HeatTestCase):
                                              prop_diff))
 
         # update devices
-        snippet_for_update = {
-            'Type': u'OS::Neutron::NetworkGateway',
-            'Properties': {
+        snippet_for_update = rsrc_defn.ResourceDefinition(
+            rsrc.name,
+            rsrc.type(),
+            {
                 'name': u'NetworkGateway',
                 'devices': [{
                     'id': u'e52148ca-7db9-4ec3-abe6-2c7c0ff316eb',
@@ -350,8 +352,7 @@ class NeutronNetworkGatewayTest(HeatTestCase):
                     'network_id': u'6af055d3-26f6-48dd-a597-7611d7e58d35',
                     'segmentation_type': u'vlan',
                     'segmentation_id': 10}]
-            }
-        }
+            })
         prop_diff = {
             'devices': [{
                 'id': u'e52148ca-7db9-4ec3-abe6-2c7c0ff316eb',

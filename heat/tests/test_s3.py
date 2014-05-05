@@ -116,7 +116,7 @@ class s3Test(HeatTestCase):
                           rsrc.FnGetAtt, 'Foo')
 
         self.assertRaises(resource.UpdateReplace,
-                          rsrc.handle_update, {}, {}, {})
+                          rsrc.handle_update, rsrc.t, {}, {})
 
         scheduler.TaskRunner(rsrc.delete)()
         self.m.VerifyAll()

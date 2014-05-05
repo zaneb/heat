@@ -168,7 +168,7 @@ class VolumeTest(HeatTestCase):
         self.assertEqual('available', fv.status)
 
         self.assertRaises(resource.UpdateReplace,
-                          rsrc.handle_update, {}, {}, {})
+                          rsrc.handle_update, rsrc.t, {}, {})
 
         fv.status = 'in-use'
         self.assertRaises(exception.ResourceFailure,

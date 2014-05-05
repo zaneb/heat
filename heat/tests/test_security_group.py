@@ -258,7 +258,8 @@ Resources:
         stack = self.create_stack(self.test_template_nova)
 
         sg = stack['the_sg']
-        self.assertRaises(resource.UpdateReplace, sg.handle_update, {}, {}, {})
+        self.assertRaises(resource.UpdateReplace, sg.handle_update,
+                          sg.t, {}, {})
 
         self.assertResourceState(sg, utils.PhysName('test_stack', 'the_sg'))
 
@@ -445,7 +446,8 @@ Resources:
         stack = self.create_stack(self.test_template_nova)
 
         sg = stack['the_sg']
-        self.assertRaises(resource.UpdateReplace, sg.handle_update, {}, {}, {})
+        self.assertRaises(resource.UpdateReplace, sg.handle_update,
+                          sg.t, {}, {})
 
         self.assertResourceState(sg, utils.PhysName('test_stack', 'the_sg'))
 
@@ -705,7 +707,8 @@ Resources:
         stack = self.create_stack(self.test_template_neutron)
 
         sg = stack['the_sg']
-        self.assertRaises(resource.UpdateReplace, sg.handle_update, {}, {}, {})
+        self.assertRaises(resource.UpdateReplace, sg.handle_update,
+                          sg.t, {}, {})
 
         self.assertResourceState(sg, 'aaaa')
 
@@ -881,7 +884,8 @@ Resources:
         stack = self.create_stack(self.test_template_neutron)
 
         sg = stack['the_sg']
-        self.assertRaises(resource.UpdateReplace, sg.handle_update, {}, {}, {})
+        self.assertRaises(resource.UpdateReplace, sg.handle_update,
+                          sg.t, {}, {})
 
         self.assertResourceState(sg, 'aaaa')
 

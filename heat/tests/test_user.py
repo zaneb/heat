@@ -152,7 +152,7 @@ class UserTest(HeatTestCase):
 
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)
         self.assertRaises(resource.UpdateReplace,
-                          rsrc.handle_update, {}, {}, {})
+                          rsrc.handle_update, rsrc.t, {}, {})
 
         self.assertIsNone(rsrc.handle_suspend())
         self.assertIsNone(rsrc.handle_resume())
@@ -316,7 +316,7 @@ class AccessKeyTest(HeatTestCase):
 
         self.m.VerifyAll()
         self.assertRaises(resource.UpdateReplace,
-                          rsrc.handle_update, {}, {}, {})
+                          rsrc.handle_update, rsrc.t, {}, {})
         self.assertEqual(self.fc.access,
                          rsrc.resource_id)
 
@@ -440,7 +440,7 @@ class AccessPolicyTest(HeatTestCase):
                                  resource_defns[resource_name],
                                  stack)
         self.assertRaises(resource.UpdateReplace,
-                          rsrc.handle_update, {}, {}, {})
+                          rsrc.handle_update, rsrc.t, {}, {})
 
     def test_accesspolicy_access_allowed(self):
         t = template_format.parse(user_policy_template)

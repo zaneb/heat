@@ -365,7 +365,7 @@ Resources:
         vpc = stack['the_vpc']
         self.assertResourceState(vpc, 'aaaa')
         self.assertRaises(resource.UpdateReplace,
-                          vpc.handle_update, {}, {}, {})
+                          vpc.handle_update, vpc.t, {}, {})
 
         scheduler.TaskRunner(vpc.delete)()
         self.m.VerifyAll()
@@ -410,7 +410,7 @@ Resources:
         self.assertResourceState(subnet, 'cccc')
 
         self.assertRaises(resource.UpdateReplace,
-                          subnet.handle_update, {}, {}, {})
+                          subnet.handle_update, subnet.t, {}, {})
         self.assertRaises(
             exception.InvalidTemplateAttribute,
             subnet.FnGetAtt,
@@ -612,7 +612,7 @@ Resources:
             self.assertEqual('10.0.0.100', rsrc.FnGetAtt('PrivateIpAddress'))
 
             self.assertRaises(resource.UpdateReplace,
-                              rsrc.handle_update, {}, {}, {})
+                              rsrc.handle_update, rsrc.t, {}, {})
 
         finally:
             scheduler.TaskRunner(stack.delete)()
@@ -642,7 +642,7 @@ Resources:
             self.assertResourceState(rsrc, 'dddd')
 
             self.assertRaises(resource.UpdateReplace,
-                              rsrc.handle_update, {}, {}, {})
+                              rsrc.handle_update, rsrc.t, {}, {})
 
         finally:
             stack.delete()
@@ -748,12 +748,12 @@ Resources:
         gateway = stack['the_gateway']
         self.assertResourceState(gateway, gateway.physical_resource_name())
         self.assertRaises(resource.UpdateReplace, gateway.handle_update,
-                          {}, {}, {})
+                          gateway.t, {}, {})
 
         attachment = stack['the_attachment']
         self.assertResourceState(attachment, 'the_attachment')
         self.assertRaises(resource.UpdateReplace,
-                          attachment.handle_update, {}, {}, {})
+                          attachment.handle_update, attachment.t, {}, {})
 
         route_table = stack['the_route_table']
         self.assertEqual(list(attachment._vpc_route_tables()), [route_table])
@@ -807,13 +807,13 @@ Resources:
         self.assertResourceState(route_table, 'ffff')
         self.assertRaises(
             resource.UpdateReplace,
-            route_table.handle_update, {}, {}, {})
+            route_table.handle_update, route_table.t, {}, {})
 
         association = stack['the_association']
         self.assertResourceState(association, 'the_association')
         self.assertRaises(
             resource.UpdateReplace,
-            association.handle_update, {}, {}, {})
+            association.handle_update, association.t, {}, {})
 
         scheduler.TaskRunner(association.delete)()
         scheduler.TaskRunner(route_table.delete)()
