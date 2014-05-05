@@ -1091,7 +1091,7 @@ class validateTest(HeatTestCase):
 
         engine = service.EngineService('a', 't')
         res = dict(engine.validate_template(None, t, {}))
-        self.assertEqual({'Error': 'Invalid DeletionPolicy Destroy'}, res)
+        self.assertEqual({'Error': 'Invalid deletion policy "Destroy"'}, res)
 
     def test_snapshot_deletion_policy(self):
         t = template_format.parse(test_template_snapshot_deletion_policy)
@@ -1102,7 +1102,7 @@ class validateTest(HeatTestCase):
         engine = service.EngineService('a', 't')
         res = dict(engine.validate_template(None, t, {}))
         self.assertEqual(
-            {'Error': 'Snapshot DeletionPolicy not supported'}, res)
+            {'Error': '"Snapshot" deletion policy not supported'}, res)
 
     @skipIf(try_import('cinderclient.v1.volume_backups') is None,
             'unable to import volume_backups')
