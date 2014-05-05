@@ -214,7 +214,7 @@ class Resource(object):
         self._metadata = metadata
 
     def type(self):
-        return self.t['Type']
+        return self.t.resource_type
 
     def has_interface(self, resource_type):
         """Check to see if this resource is either mapped to resource_type
