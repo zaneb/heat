@@ -643,7 +643,7 @@ class Instance(resource.Resource):
         Refresh the metadata if new_metadata is None
         '''
         if new_metadata is None:
-            self.metadata = self.parsed_template('Metadata')
+            self.metadata = self.t.metadata()
 
     def validate(self):
         '''

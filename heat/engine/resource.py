@@ -74,7 +74,7 @@ class Metadata(object):
         if resource is None:
             return None
         if resource.id is None:
-            return resource.parsed_template('Metadata')
+            return resource.t.metadata()
         rs = db_api.resource_get(resource.stack.context, resource.id)
         rs.refresh(attrs=['rsrc_metadata'])
         return rs.rsrc_metadata
