@@ -133,7 +133,7 @@ def format_stack_resource(resource, detail=True):
         res[api.RES_NESTED_STACK_ID] = dict(resource.nested().identifier())
 
     if detail:
-        res[api.RES_DESCRIPTION] = resource.parsed_template('Description', '')
+        res[api.RES_DESCRIPTION] = resource.t.description
         res[api.RES_METADATA] = resource.metadata
 
     return res
