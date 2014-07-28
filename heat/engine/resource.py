@@ -25,7 +25,7 @@ from heat.engine.attributes import Attributes
 from heat.engine import environment
 from heat.engine import event
 from heat.engine import function
-from heat.engine.properties import Properties
+from heat.engine import properties
 from heat.engine import resources
 from heat.engine import rsrc_defn
 from heat.engine import scheduler
@@ -575,11 +575,11 @@ class Resource(object):
         if before is None:
             before = self.parsed_template()
 
-        before_props = Properties(self.properties_schema,
-                                  before.get('Properties', {}),
-                                  function.resolve,
-                                  self.name,
-                                  self.context)
+        before_props = properties.Properties(self.properties_schema,
+                                             before.get('Properties', {}),
+                                             function.resolve,
+                                             self.name,
+                                             self.context)
         after_props = after.properties(self.properties_schema,
                                        self.context)
 
@@ -945,18 +945,18 @@ class Resource(object):
             as parameters, and the resource's attributes_schema is mapped as
             outputs
         '''
-        (parameters, properties) = (Properties.
-                                    schema_to_parameters_and_properties(
-                                        cls.properties_schema))
+        schema = cls.properties_schema
+        params, props = (properties.Properties.
+                         schema_to_parameters_and_properties(schema))
 
         resource_name = cls.__name__
         return {
             'HeatTemplateFormatVersion': '2012-12-12',
-            'Parameters': parameters,
+            'Parameters': params,
             'Resources': {
                 resource_name: {
                     'Type': resource_type,
-                    'Properties': properties
+                    'Properties': props
                 }
             },
             'Outputs': Attributes.as_outputs(resource_name, cls)
