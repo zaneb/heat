@@ -1737,17 +1737,6 @@ class StackTest(HeatTestCase):
         self.assertEqual((self.stack.ROLLBACK, self.stack.COMPLETE),
                          self.stack.state)
 
-    def test_update_badstate(self):
-        self.stack = parser.Stack(self.ctx, 'test_stack', self.tmpl,
-                                  action=parser.Stack.CREATE,
-                                  status=parser.Stack.FAILED)
-        self.stack.store()
-        self.assertEqual((parser.Stack.CREATE, parser.Stack.FAILED),
-                         self.stack.state)
-        self.stack.update(mock.Mock())
-        self.assertEqual((parser.Stack.UPDATE, parser.Stack.FAILED),
-                         self.stack.state)
-
     def test_resource_by_refid(self):
         tmpl = {'HeatTemplateFormatVersion': '2012-12-12',
                 'Resources': {'AResource': {'Type': 'GenericResourceType'}}}
