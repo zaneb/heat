@@ -575,11 +575,15 @@ class Resource(object):
         if before is None:
             before = self.parsed_template()
 
-        before_props = properties.Properties(self.properties_schema,
-                                             before.get('Properties', {}),
-                                             function.resolve,
-                                             self.name,
-                                             self.context)
+        if self._stored_properties_data is not None:
+            before_props = properties.Properties(self.properties_schema,
+                                                 self._stored_properties_data)
+        else:
+            before_props = properties.Properties(self.properties_schema,
+                                                 before.get('Properties', {}),
+                                                 function.resolve,
+                                                 self.name,
+                                                 self.context)
         after_props = after.properties(self.properties_schema,
                                        self.context)
 
