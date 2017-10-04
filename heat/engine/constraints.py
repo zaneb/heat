@@ -295,6 +295,16 @@ class Constraint(collections.Mapping):
 
         return '\n'.join(desc())
 
+    def __repr__(self):
+        data = self._constraint()
+        if isinstance(data, collections.Mapping):
+            argstring = ', '.join('%s=%r' % (k, v)
+                                  for k, v in sorted(data.items()))
+        else:
+            argstring = repr(data)
+        return '%(class)s(%(args)s)' % {'class': type(self).__name__,
+                                        'args': argstring}
+
     def validate(self, value, schema=None, context=None):
         if not self._is_valid(value, schema, context):
             if self.description:

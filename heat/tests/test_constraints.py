@@ -35,6 +35,10 @@ class SchemaTest(common.HeatTestCase):
         r = constraints.Range(max=10, description='a range')
         self.assertEqual(d, dict(r))
 
+    def test_range_repr(self):
+        r = constraints.Range(max=10, min=0, description='a range')
+        self.assertEqual('Range(max=10, min=0)', repr(r))
+
     def test_length_schema(self):
         d = {'length': {'min': 5, 'max': 10}, 'description': 'a length range'}
         r = constraints.Length(5, 10, description='a length range')
@@ -50,11 +54,19 @@ class SchemaTest(common.HeatTestCase):
         r = constraints.Length(max=10, description='a length range')
         self.assertEqual(d, dict(r))
 
+    def test_length_repr(self):
+        r = constraints.Length(max=10, min=0, description='a range')
+        self.assertEqual('Length(max=10, min=0)', repr(r))
+
     def test_modulo_schema(self):
         d = {'modulo': {'step': 2, 'offset': 1},
              'description': 'a modulo'}
         r = constraints.Modulo(2, 1, description='a modulo')
         self.assertEqual(d, dict(r))
+
+    def test_modulo_repr(self):
+        r = constraints.Modulo(step=2, offset=1, description='a range')
+        self.assertEqual('Modulo(offset=1, step=2)', repr(r))
 
     def test_allowed_values_schema(self):
         d = {'allowed_values': ['foo', 'bar'], 'description': 'allowed values'}
@@ -62,11 +74,19 @@ class SchemaTest(common.HeatTestCase):
                                       description='allowed values')
         self.assertEqual(d, dict(r))
 
+    def test_allowed_values_repr(self):
+        r = constraints.AllowedValues(['foo', 'bar'])
+        self.assertEqual("AllowedValues(['foo', 'bar'])", repr(r))
+
     def test_allowed_pattern_schema(self):
         d = {'allowed_pattern': '[A-Za-z0-9]', 'description': 'alphanumeric'}
         r = constraints.AllowedPattern('[A-Za-z0-9]',
                                        description='alphanumeric')
         self.assertEqual(d, dict(r))
+
+    def test_allowed_pattern_repr(self):
+        r = constraints.AllowedPattern('[A-Za-z0-9]')
+        self.assertEqual("AllowedPattern('[A-Za-z0-9]')", repr(r))
 
     def test_range_validate(self):
         r = constraints.Range(min=5, max=5, description='a range')
@@ -538,6 +558,10 @@ class CustomConstraintTest(common.HeatTestCase):
         error = self.assertRaises(ValueError, constraint.validate, 1)
         self.assertEqual('"1" does not validate zero',
                          six.text_type(error))
+
+    def test_custom_repr(self):
+        r = constraints.CustomConstraint('glance.image')
+        self.assertEqual("CustomConstraint('glance.image')", repr(r))
 
     def test_custom_error(self):
         class ZeroConstraint(object):
