@@ -229,12 +229,16 @@ class WaitConditionMetadataUpdateTest(common.HeatTestCase):
     def test_wait_metadata(self, mock_identifier, mock_sleep,
                            mock_check, mock_handle, *args):
         """Tests a wait condition metadata update after a signal call."""
+        self.stub_ImageConstraint_validate()
+        self.stub_FlavorConstraint_validate()
+        self.stub_KeypairConstraint_validate()
 
         # Setup Stack
         temp = template_format.parse(TEST_TEMPLATE_WAIT_CONDITION)
         template = tmpl.Template(temp)
         ctx = utils.dummy_context()
         stack = stk.Stack(ctx, 'test-stack', template, disable_rollback=True)
+        stack.validate()
         stack.store()
 
         self.stub_KeypairConstraint_validate()

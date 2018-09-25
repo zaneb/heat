@@ -480,7 +480,11 @@ class VolumeTest(vt_base.VolumeTestCase):
         self.assertEqual((rsrc.UPDATE, rsrc.FAILED), rsrc.state)
 
     def test_volume_check(self):
+        self.stub_ImageConstraint_validate()
+        self.stub_VolumeTypeConstraint_validate()
+
         stack = utils.parse_stack(self.t, stack_name='volume_check')
+        stack.validate()
         res = stack['DataVolume']
         res.state_set(res.CREATE, res.COMPLETE)
         fake_volume = vt_base.FakeVolume('available')
@@ -497,7 +501,11 @@ class VolumeTest(vt_base.VolumeTestCase):
         self.assertEqual((res.CHECK, res.COMPLETE), res.state)
 
     def test_volume_check_not_available(self):
+        self.stub_ImageConstraint_validate()
+        self.stub_VolumeTypeConstraint_validate()
+
         stack = utils.parse_stack(self.t, stack_name='volume_check_na')
+        stack.validate()
         res = stack['DataVolume']
         res.state_set(res.CREATE, res.COMPLETE)
         cinder = mock.Mock()
@@ -511,7 +519,11 @@ class VolumeTest(vt_base.VolumeTestCase):
         self.assertIn('foobar', res.status_reason)
 
     def test_volume_check_fail(self):
+        self.stub_ImageConstraint_validate()
+        self.stub_VolumeTypeConstraint_validate()
+
         stack = utils.parse_stack(self.t, stack_name='volume_check_fail')
+        stack.validate()
         res = stack['DataVolume']
         res.state_set(res.CREATE, res.COMPLETE)
         cinder = mock.Mock()

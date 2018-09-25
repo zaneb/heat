@@ -510,16 +510,21 @@ class HOTemplateTest(common.HeatTestCase):
             properties:
               count: 3
               resource_def:
-                type: OS::Nova::Server
+                type: OS::Heat::None
+        outputs:
+          rg_name:
+            value: {get_attr: [rg, name]}
         ''')
         tmpl = template.Template(hot_tpl)
         stack = parser.Stack(utils.dummy_context(), 'test_stack', tmpl)
+        stack.validate()
         snippet = {'list_join': ["\n", {'get_attr': ['rg', 'name']}]}
         self.assertEqual('', self.resolve(snippet, tmpl, stack))
         # test list_join for liberty template
         hot_tpl['heat_template_version'] = '2015-10-15'
         tmpl = template.Template(hot_tpl)
         stack = parser.Stack(utils.dummy_context(), 'test_stack', tmpl)
+        stack.validate()
         snippet = {'list_join': ["\n", {'get_attr': ['rg', 'name']}]}
         self.assertEqual('', self.resolve(snippet, tmpl, stack))
         # test list join again and update to multiple lists

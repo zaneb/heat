@@ -196,6 +196,7 @@ class FormatTest(common.HeatTestCase):
         '''))
         stack = parser.Stack(utils.dummy_context(), 'test_stack_for_preview',
                              tmpl, stack_id=str(uuid.uuid4()))
+        stack.validate()
         res = stack[res_name]
         return api.format_resource_properties(res)
 

@@ -233,21 +233,11 @@ class GetAttThenSelect(function.Function):
             raise exception.InvalidTemplateAttribute(
                 resource=self._resource_name, key=attr)
 
-    def _result_ready(self, r):
-        if r.action in (r.CREATE, r.ADOPT, r.SUSPEND, r.RESUME,
-                        r.UPDATE, r.ROLLBACK, r.SNAPSHOT, r.CHECK):
-            return True
-
-        return False
-
     def result(self):
         attr_name = function.resolve(self._attribute)
 
         resource = self._resource()
-        if self._result_ready(resource):
-            attribute = resource.FnGetAtt(attr_name)
-        else:
-            attribute = None
+        attribute = resource.FnGetAtt(attr_name)
 
         if attribute is None:
             return None
@@ -273,10 +263,7 @@ class GetAtt(GetAttThenSelect):
         attribute = function.resolve(self._attribute)
 
         resource = self._resource()
-        if self._result_ready(resource):
-            return resource.FnGetAtt(attribute, *path_components)
-        else:
-            return None
+        return resource.FnGetAtt(attribute, *path_components)
 
     def _attr_path(self):
         path = function.resolve(self._path_components)
@@ -325,13 +312,7 @@ class GetAttAllAttributes(GetAtt):
 
     def result(self):
         if self._attribute is None:
-            r = self._resource()
-            if (r.status in (r.IN_PROGRESS, r.COMPLETE) and
-                    r.action in (r.CREATE, r.ADOPT, r.SUSPEND, r.RESUME,
-                                 r.UPDATE, r.CHECK, r.SNAPSHOT)):
-                return r.FnGetAtts()
-            else:
-                return None
+            return self._resource().FnGetAtts()
         else:
             return super(GetAttAllAttributes, self).result()
 
