@@ -154,9 +154,6 @@ class NeutronResource(resource.Resource):
 
         return True
 
-    def get_reference_id(self):
-        return self.resource_id
-
     def _not_found_in_call(self, func, *args, **kwargs):
         try:
             func(*args, **kwargs)

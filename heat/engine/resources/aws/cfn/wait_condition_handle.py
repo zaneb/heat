@@ -41,7 +41,7 @@ class WaitConditionHandle(wc_base.BaseWaitConditionHandle):
             wc = signal_responder.WAITCONDITION
             return six.text_type(self._get_ec2_signed_url(signal_type=wc))
         else:
-            return six.text_type(self.name)
+            return super(WaitConditionHandle, self).get_reference_id()
 
     def metadata_update(self, new_metadata=None):
         """DEPRECATED. Should use handle_signal instead."""

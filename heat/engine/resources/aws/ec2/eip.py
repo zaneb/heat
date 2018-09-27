@@ -140,7 +140,7 @@ class ElasticIp(resource.Resource):
         if eip:
             return six.text_type(eip)
         else:
-            return six.text_type(self.name)
+            return self.reference_id_placeholder()
 
     def _resolve_attribute(self, name):
         if name == self.ALLOCATION_ID:

@@ -103,7 +103,7 @@ class AWSScalingPolicy(heat_sp.AutoScalingPolicy):
         if self.resource_id is not None:
             return six.text_type(self._get_ec2_signed_url())
         else:
-            return six.text_type(self.name)
+            return super(AWSScalingPolicy, self).get_reference_id()
 
 
 def resource_mapping():

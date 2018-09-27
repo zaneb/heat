@@ -358,6 +358,16 @@ overridden:
                                     "failed : %s"), ex)
                     return None
 
+Defining the Reference ID Type
+******************************
+The resource plugin can define the type of the string value that it returns, by specifying the name of a custom constraint:
+
+.. code-block:: python
+
+    refid_type_constraint = 'nova.keypair'
+
+This information is used when validating templates.
+
 Property and Attribute Example
 ******************************
 Assume the following simple property and attribute definition:
@@ -392,6 +402,8 @@ Assume the following simple property and attribute definition:
                 type=attributes.Schema.MAP
             )
         }
+
+        refid_type_constraint = 'service.fooresource'
 
 Also assume the plug-in defining the above has been registered under the
 template reference name 'Resource::Foo' (see `Registering Resource Plug-ins`_).

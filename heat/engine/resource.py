@@ -39,6 +39,7 @@ from heat.engine import event
 from heat.engine import function
 from heat.engine.hot import template as hot_tmpl
 from heat.engine import node_data
+from heat.engine import placeholder
 from heat.engine import properties
 from heat.engine import resources
 from heat.engine import rsrc_defn
@@ -120,6 +121,11 @@ class Resource(status.ResourceStatus):
 
     # Resource implementations set this to update policies
     update_policy_schema = {}
+
+    # Resource implementations may set this to the name of a custom constraint
+    # that the reference ID (i.e. the result of the {get_resource: } intrinsic
+    # function) will conform to.
+    refid_type_constraint = None
 
     # Default entity of resource, which is used for during resolving
     # show attribute
@@ -1166,9 +1172,17 @@ class Resource(status.ResourceStatus):
         # Calculate attribute values *before* reference ID, to potentially
         # save an extra RPC call in TemplateResource
         attribute_values = dict(get_attrs(dep_attrs))
+        reference_id = self.FnGetRefId()
+        # Ensure that the reference ID is a Placeholder if the resource has not
+        # been created yet, even if a third-party plugin has supplied its own
+        # value.
+        if (self.action == self.INIT and
+                not isinstance(reference_id, placeholder.Placeholder)):
+            reference_id = self.reference_id_placeholder(reference_id)
+            assert isinstance(reference_id, placeholder.Placeholder)
 
         return node_data.NodeData(self.id, self.name, self.uuid,
-                                  self.FnGetRefId(), attribute_values,
+                                  reference_id, attribute_values,
                                   self.action, self.status)
 
     def preview(self):
@@ -2356,6 +2370,12 @@ class Resource(status.ResourceStatus):
                 self.context, self.id, self._attr_data_id)
         self.attributes.reset_resolved_values()
 
+    def reference_id_placeholder(self, default=None):
+        if default is None:
+            default = self.name
+        return placeholder.typed_StringPlaceholder(default,
+                                                   self.refid_type_constraint)
+
     def get_reference_id(self):
         """Default implementation for function get_resource.
 
@@ -2365,7 +2385,7 @@ class Resource(status.ResourceStatus):
         if self.resource_id is not None:
             return six.text_type(self.resource_id)
         else:
-            return six.text_type(self.name)
+            return self.reference_id_placeholder()
 
     def FnGetRefId(self):
         """For the intrinsic function Ref.

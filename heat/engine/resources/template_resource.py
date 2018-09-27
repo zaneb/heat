@@ -317,7 +317,7 @@ class TemplateResource(stack_resource.StackResource):
 
     def get_reference_id(self):
         if self.resource_id is None:
-            return six.text_type(self.name)
+            return super(TemplateResource, self).get_reference_id()
 
         if STACK_ID_OUTPUT in self.attributes.cached_attrs:
             return self.attributes.cached_attrs[STACK_ID_OUTPUT]
