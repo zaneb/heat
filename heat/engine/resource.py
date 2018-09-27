@@ -1135,8 +1135,7 @@ class Resource(status.ResourceStatus):
                     if (path[0] in self.attributes or
                         (type(self).get_attribute != Resource.get_attribute or
                          type(self).FnGetAtt != Resource.FnGetAtt)):
-                        # TODO(ricolin) make better placeholder values here
-                        yield attr, None
+                        yield attr, self.attributes.get_placeholder(*path)
                 else:
                     try:
                         yield attr, self.FnGetAtt(*path)

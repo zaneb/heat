@@ -19,6 +19,7 @@ import six
 from heat.common.i18n import _
 from heat.common.i18n import repr_wrapper
 from heat.engine import constraints as constr
+from heat.engine import placeholder
 from heat.engine import support
 
 from oslo_log import log as logging
@@ -56,8 +57,9 @@ class Schema(constr.Schema):
     def __init__(self, description=None,
                  support_status=support.SupportStatus(),
                  cache_mode=CACHE_LOCAL,
-                 type=UNKNOWN):
-        super(Schema, self).__init__(type, description)
+                 type=UNKNOWN, default=None, schema=None, constraints=None):
+        super(Schema, self).__init__(type, description, default, schema,
+                                     constraints=constraints)
         self.support_status = support_status
         self.cache_mode = cache_mode
         self.validate()
@@ -79,6 +81,57 @@ class Schema(constr.Schema):
         msg = 'Old attribute schema is not supported'
         assert isinstance(schema_dict, cls), msg
         return schema_dict
+
+    def _default_value(self):
+        if self.default is not None:
+            return self.default
+
+        if self.type == self.STRING:
+            return ''
+        elif self.type == self.INTEGER:
+            return 0
+        elif self.type == self.BOOLEAN:
+            return False
+
+        return placeholder.UnknownPlaceholder()
+
+    def create_placeholder(self, subpath=[]):
+        if self.type == self.STRING:
+            default = self._default_value()
+            if len(subpath) == 1:
+                try:
+                    default = default[int(subpath[0])]
+                except (TypeError, IndexError):
+                    pass
+            return placeholder.StringPlaceholder(default)
+
+        elif self.type == self.INTEGER:
+            return placeholder.IntPlaceholder(self._default_value())
+
+        elif self.type == self.MAP:
+            keys = self.schema.keys() if self.schema is not None else []
+            if subpath:
+                key = subpath[0]
+                if key in keys:
+                    return self.schema[key].create_placeholder(subpath[1:])
+            else:
+                contents = {k: self.schema[k].create_placeholder()
+                            for k in keys}
+                return placeholder.DictPlaceholder(self._default_value(),
+                                                   contents)
+
+        elif self.type == self.LIST:
+            if subpath:
+                if self.schema is not None:
+                    return self.schema.create_placeholder(subpath[1:])
+            else:
+                if self.schema is not None:
+                    default = self.schema._default_value()
+                else:
+                    default = self._default_value()
+                return placeholder.ListPlaceholder(default)
+
+        return self._default_value()
 
 
 def schemata(schema):
@@ -264,6 +317,12 @@ class Attributes(collections.Mapping):
         have been updated since they were initially set (if at all).
         """
         return self._has_new_resolved
+
+    def get_placeholder(self, attr_name, *subpath):
+        if attr_name not in self:
+            return placeholder.UnknownPlaceholder()
+
+        return self._attributes[attr_name].schema.create_placeholder(subpath)
 
     def __getitem__(self, key):
         if key not in self:
