@@ -25,6 +25,7 @@ import six
 from heat.common import cache
 from heat.common import exception
 from heat.common.i18n import _
+from heat.engine import placeholder
 from heat.engine import resources
 
 # decorator that allows to cache the value
@@ -306,12 +307,23 @@ class Constraint(collections.Mapping):
                                         'args': argstring}
 
     def validate(self, value, schema=None, context=None):
-        if not self._is_valid(value, schema, context):
+        if isinstance(value, placeholder.Placeholder):
+            for constr in value.constraints:
+                if (self._conflicts_with(constr, schema) or
+                    (type(self) != type(constr) and
+                     constr._conflicts_with(self, schema))):
+                    raise ValueError(_('Conflicting constraints: '
+                                       '%(c1)s vs. %(c2)s') % {'c1': self,
+                                                               'c2': constr})
+        elif not self._is_valid(value, schema, context):
             if self.description:
                 err_msg = self.description
             else:
                 err_msg = self._err_msg(value)
             raise ValueError(err_msg)
+
+    def _conflicts_with(self, other, schema):
+        return False
 
     @classmethod
     def _name(cls):
@@ -396,6 +408,11 @@ class Range(Constraint):
 
         return True
 
+    def _conflicts_with(self, other, schema):
+        if type(other) == Range:
+            return (self.min > other.max) or (self.max < other.min)
+        return False
+
     def _constraint(self):
         def constraints():
             if self.min is not None:
@@ -448,6 +465,11 @@ class Length(Range):
 
     def _is_valid(self, value, schema, context):
         return super(Length, self)._is_valid(len(value), schema, context)
+
+    def _conflicts_with(self, other, schema):
+        if type(other) == Length:
+            return (self.min > other.max) or (self.max < other.min)
+        return False
 
 
 class Modulo(Constraint):
@@ -559,6 +581,11 @@ class AllowedValues(Constraint):
         allowed = '[%s]' % ', '.join(str(a) for a in self.allowed)
         return '"%s" is not an allowed value %s' % (value, allowed)
 
+    def _allowed_norm(self, schema):
+        if schema is None:
+            return self.allowed
+        return tuple(schema.to_schema_type(v) for v in self.allowed)
+
     def _is_valid(self, value, schema, context):
         # For list values, check if all elements of the list are contained
         # in allowed list.
@@ -566,10 +593,18 @@ class AllowedValues(Constraint):
             return all(v in self.allowed for v in value)
 
         if schema is not None:
-            _allowed = tuple(schema.to_schema_type(v) for v in self.allowed)
-            return schema.to_schema_type(value) in _allowed
+            return schema.to_schema_type(value) in self._allowed_norm(schema)
 
         return value in self.allowed
+
+    def _conflicts_with(self, other, schema):
+        if isinstance(other, AllowedValues):
+            return not (set(self._allowed_norm(schema)) &
+                        set(other._allowed_norm(schema)))
+        if isinstance(other, (Range, Length, Modulo, AllowedPattern)):
+            return not any(other.is_valid(value, schema, None)
+                           for value in self._allowed_norm(schema))
+        return False
 
     def _constraint(self):
         return list(self.allowed)
@@ -658,6 +693,11 @@ class CustomConstraint(Constraint):
         if not constraint:
             return False
         return constraint.validate(value, context)
+
+    def _conflicts_with(self, other, schema):
+        if isinstance(other, CustomConstraint):
+            return other.name != self.name
+        return False
 
 
 class BaseCustomConstraint(object):
