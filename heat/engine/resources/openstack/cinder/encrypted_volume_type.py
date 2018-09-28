@@ -88,6 +88,8 @@ class CinderEncryptedVolumeType(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'cinder.vtype'
+
     def _get_vol_type_id(self, volume_type):
         id = self.client_plugin().get_volume_type(volume_type)
         return id

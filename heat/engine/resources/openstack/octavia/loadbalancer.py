@@ -108,6 +108,8 @@ class LoadBalancer(octavia_base.OctaviaBase):
         ),
     }
 
+    refid_type_constraint = 'octavia.loadbalancer'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

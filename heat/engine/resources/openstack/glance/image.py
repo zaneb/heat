@@ -171,6 +171,8 @@ class GlanceImage(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'glance.image'
+
     default_client_name = 'glance'
 
     entity = 'images'

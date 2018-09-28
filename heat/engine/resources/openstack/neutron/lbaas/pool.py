@@ -153,6 +153,8 @@ class Pool(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.lbaas.pool'
+
     def translation_rules(self, props):
         client_plugin = self.client_plugin()
         return [

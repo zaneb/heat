@@ -54,6 +54,8 @@ class QoSSpecs(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'cinder.qos_specs'
+
     def _find_diff(self, update_prps, stored_prps):
         remove_prps = list(
             set(stored_prps.keys() or []) - set(update_prps.keys() or [])

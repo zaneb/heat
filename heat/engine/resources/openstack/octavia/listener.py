@@ -134,6 +134,8 @@ class Listener(octavia_base.OctaviaBase):
         )
     }
 
+    refid_type_constraint = 'octavia.listener'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

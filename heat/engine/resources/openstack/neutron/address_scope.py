@@ -72,6 +72,8 @@ class AddressScope(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.address_scope'
+
     def handle_create(self):
         props = self.prepare_properties(
             self.properties,

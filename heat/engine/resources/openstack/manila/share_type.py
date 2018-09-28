@@ -71,6 +71,8 @@ class ManilaShareType(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'manila.share_type'
+
     default_client_name = 'manila'
 
     entity = 'share_types'

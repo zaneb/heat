@@ -93,6 +93,8 @@ class Policy(res_base.BaseSenlinResource):
         )
     }
 
+    refid_type_constraint = 'senlin.policy'
+
     def translation_rules(self, props):
         rules = [
             translation.TranslationRule(

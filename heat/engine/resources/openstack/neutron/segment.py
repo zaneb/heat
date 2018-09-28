@@ -84,6 +84,8 @@ class Segment(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.segment'
+
     def translation_rules(self, props):
         client_plugin = self.client_plugin()
         return [

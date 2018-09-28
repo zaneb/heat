@@ -101,6 +101,8 @@ class DesignateZone(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'designate.zone'
+
     default_client_name = 'designate'
 
     entity = 'zones'

@@ -63,6 +63,8 @@ class KeystoneService(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'keystone.service'
+
     def client(self):
         return super(KeystoneService, self).client().client
 

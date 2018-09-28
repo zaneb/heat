@@ -80,6 +80,8 @@ class QoSPolicy(neutron.NeutronResource):
         )
     }
 
+    refid_type_constraint = 'neutron.qos_policy'
+
     def handle_create(self):
         props = self.prepare_properties(
             self.properties,

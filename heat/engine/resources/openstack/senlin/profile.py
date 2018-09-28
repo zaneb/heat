@@ -60,6 +60,8 @@ class Profile(res_base.BaseSenlinResource):
         )
     }
 
+    refid_type_constraint = 'senlin.profile'
+
     def handle_create(self):
         params = {
             'name': (self.properties[self.NAME] or

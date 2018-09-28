@@ -385,6 +385,8 @@ class Workflow(signal_responder.SignalResponder,
         )
     }
 
+    refid_type_constraint = 'mistral.workflow'
+
     def translation_rules(self, properties):
         policies_keys = [self.PAUSE_BEFORE, self.WAIT_AFTER, self.WAIT_BEFORE,
                          self.TIMEOUT, self.CONCURRENCY, self.RETRY]

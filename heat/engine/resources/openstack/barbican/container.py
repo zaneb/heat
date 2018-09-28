@@ -101,6 +101,8 @@ class GenericContainer(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'barbican.container'
+
     def get_refs(self):
         secrets = self.properties.get(self.SECRETS) or []
         return [secret['ref'] for secret in secrets]

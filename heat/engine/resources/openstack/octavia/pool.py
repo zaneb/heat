@@ -142,6 +142,8 @@ class Pool(octavia_base.OctaviaBase):
         ),
     }
 
+    refid_type_constraint = 'octavia.pool'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

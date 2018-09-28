@@ -85,6 +85,8 @@ class CinderVolumeType(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'cinder.vtype'
+
     def _add_projects_access(self, projects):
         for project in projects:
             project_id = self.client_plugin('keystone').get_project_id(project)

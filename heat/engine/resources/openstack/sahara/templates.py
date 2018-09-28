@@ -532,6 +532,8 @@ class SaharaClusterTemplate(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'sahara.cluster_template'
+
     default_client_name = 'sahara'
 
     physical_resource_name_limit = 50

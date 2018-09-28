@@ -309,6 +309,8 @@ class Port(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.port'
+
     # Need to update properties_schema with other properties before
     # initialisation, because resource should contain all properties before
     # creating. Also, documentation should correctly resolves resource

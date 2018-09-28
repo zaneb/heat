@@ -57,6 +57,8 @@ class KeystoneRole(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'keystone.role'
+
     def translation_rules(self, properties):
         return [
             translation.TranslationRule(

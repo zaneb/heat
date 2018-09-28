@@ -248,6 +248,8 @@ class CinderVolume(vb.BaseVolume, sh.SchedulerHintsMixin):
         ),
     }
 
+    refid_type_constraint = 'cinder.volume'
+
     _volume_creating_status = ['creating', 'restoring-backup', 'downloading']
 
     entity = 'volumes'

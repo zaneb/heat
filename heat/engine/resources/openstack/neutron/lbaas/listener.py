@@ -149,6 +149,8 @@ class Listener(neutron.NeutronResource):
         )
     }
 
+    refid_type_constraint = 'neutron.lbaas.listener'
+
     def __init__(self, name, definition, stack):
         super(Listener, self).__init__(name, definition, stack)
         self._lb_id = None

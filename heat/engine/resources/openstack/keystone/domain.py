@@ -58,6 +58,8 @@ class KeystoneDomain(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'keystone.domain'
+
     def client(self):
         return super(KeystoneDomain, self).client().client
 

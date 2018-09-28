@@ -193,6 +193,8 @@ class SaharaCluster(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'sahara.cluster'
+
     default_client_name = 'sahara'
 
     entity = 'clusters'

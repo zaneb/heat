@@ -107,6 +107,8 @@ class KeyPair(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'nova.keypair'
+
     default_client_name = 'nova'
 
     entity = 'keypairs'

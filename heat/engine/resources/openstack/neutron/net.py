@@ -176,6 +176,8 @@ class Net(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.network'
+
     def translation_rules(self, properties):
         return [translation.TranslationRule(
             properties,

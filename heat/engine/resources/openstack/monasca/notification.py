@@ -95,6 +95,8 @@ class MonascaNotification(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'monasca.notification'
+
     def _period_interval(self):
         period = self.properties[self.PERIOD]
         if period is None:

@@ -86,6 +86,8 @@ class ZaqarQueue(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'zaqar.queue'
+
     def physical_resource_name(self):
         name = self.properties[self.NAME]
         if name is not None:

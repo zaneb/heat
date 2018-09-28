@@ -151,6 +151,8 @@ class SecurityGroup(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.security_group'
+
     default_egress_rules = [
         {"direction": "egress", "ethertype": "IPv4"},
         {"direction": "egress", "ethertype": "IPv6"}

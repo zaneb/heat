@@ -130,6 +130,8 @@ class SubnetPool(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.subnetpool'
+
     def validate(self):
         super(SubnetPool, self).validate()
         self._validate_prefix_bounds()

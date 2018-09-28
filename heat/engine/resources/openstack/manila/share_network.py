@@ -104,6 +104,8 @@ class ManilaShareNetwork(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'manila.share_network'
+
     default_client_name = 'manila'
 
     entity = 'share_networks'

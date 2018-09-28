@@ -218,6 +218,8 @@ class ClusterTemplate(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'magnum.cluster_template'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

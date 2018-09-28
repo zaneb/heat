@@ -718,6 +718,8 @@ class Server(server_base.BaseServer, sh.SchedulerHintsMixin,
         ),
     }
 
+    refid_type_constraint = 'nova.server'
+
     default_client_name = 'nova'
 
     def translation_rules(self, props):

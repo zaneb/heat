@@ -137,6 +137,8 @@ class KeystoneUser(resource.Resource,
         ),
     }
 
+    refid_type_constraint = 'keystone.user'
+
     def translation_rules(self, properties):
         return [
             translation.TranslationRule(

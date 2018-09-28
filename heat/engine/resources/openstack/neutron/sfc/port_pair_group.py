@@ -65,6 +65,8 @@ class PortPairGroup(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.port_pair_group'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

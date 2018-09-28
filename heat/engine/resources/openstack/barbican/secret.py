@@ -132,6 +132,8 @@ class Secret(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'barbican.secret'
+
     def handle_create(self):
         info = dict(self.properties)
         secret = self.client().secrets.create(**info)

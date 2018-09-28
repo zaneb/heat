@@ -143,6 +143,8 @@ class NovaFlavor(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'nova.flavor'
+
     def translation_rules(self, properties):
         return [
             translation.TranslationRule(

@@ -187,6 +187,8 @@ class Cluster(res_base.BaseSenlinResource):
         )
     }
 
+    refid_type_constraint = 'senlin.cluster'
+
     def translation_rules(self, props):
         rules = [
             translation.TranslationRule(

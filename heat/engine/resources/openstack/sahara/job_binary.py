@@ -83,6 +83,8 @@ class JobBinary(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'sahara.job_binary'
+
     default_client_name = 'sahara'
 
     entity = 'job_binaries'

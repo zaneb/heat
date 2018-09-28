@@ -113,6 +113,8 @@ class L7Policy(octavia_base.OctaviaBase):
         ),
     }
 
+    refid_type_constraint = 'octavia.l7policy'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

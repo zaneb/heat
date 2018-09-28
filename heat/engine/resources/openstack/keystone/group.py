@@ -64,6 +64,8 @@ class KeystoneGroup(resource.Resource,
         )
     }
 
+    refid_type_constraint = 'keystone.group'
+
     def translation_rules(self, properties):
         return [
             translation.TranslationRule(

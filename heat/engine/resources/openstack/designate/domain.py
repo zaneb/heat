@@ -90,6 +90,8 @@ class DesignateDomain(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'designate.domain'
+
     def handle_create(self):
         args = dict((k, v) for k, v in six.iteritems(self.properties) if v)
         domain = self.client_plugin().domain_create(**args)

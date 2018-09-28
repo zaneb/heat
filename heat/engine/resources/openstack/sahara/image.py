@@ -67,6 +67,8 @@ class SaharaImageRegistry(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'sahara.image'
+
     def translation_rules(self, props):
         return [
             translation.TranslationRule(

@@ -118,6 +118,8 @@ class KeystoneProject(resource.Resource):
         ),
     }
 
+    refid_type_constraint = 'keystone.project'
+
     def _resolve_attribute(self, name):
         if self.resource_id is None:
             return

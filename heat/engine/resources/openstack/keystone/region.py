@@ -69,6 +69,8 @@ class KeystoneRegion(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'keystone.region'
+
     def translation_rules(self, properties):
         return [
             translation.TranslationRule(

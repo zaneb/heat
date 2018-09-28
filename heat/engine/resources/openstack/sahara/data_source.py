@@ -95,6 +95,8 @@ class DataSource(resource.Resource):
         )
     }
 
+    refid_type_constraint = 'sahara.data_source'
+
     default_client_name = 'sahara'
 
     entity = 'data_sources'

@@ -137,6 +137,8 @@ class FlowClassifier(neutron.NeutronResource):
         ),
     }
 
+    refid_type_constraint = 'neutron.flow_classifier'
+
     def translation_rules(self, props):
         client_plugin = self.client_plugin()
         return [
