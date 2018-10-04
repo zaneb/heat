@@ -634,8 +634,23 @@ class Resource(status.ResourceStatus):
         ends.
         """
         live_props = self.properties
-        props = self.frozen_definition().properties(self.properties_schema,
-                                                    self.context)
+
+        if self._stored_properties_data is None:
+            def rslv(value):
+                try:
+                    return function.resolve(value)
+                except Exception:
+                    return None
+
+            prop_data = {k: rslv(v) for k, v in live_props.data.items()}
+        else:
+            prop_data = self._stored_properties_data
+
+        props = properties.Properties(self.properties_schema, prop_data,
+                                      context=self.context,
+                                      section=rsrc_defn.PROPERTIES)
+        self.translate_properties(props,
+                                  ignore_resolve_error=True)
 
         try:
             self.properties = props
@@ -1997,15 +2012,9 @@ class Resource(status.ResourceStatus):
 
         LOG.info('deleting %s', self)
 
-        if self._stored_properties_data is not None:
-            # On delete we can't rely on re-resolving the properties
-            # so use the stored frozen_definition instead
-            self.properties = self.frozen_definition().properties(
-                self.properties_schema, self.context)
-            self.translate_properties(self.properties,
-                                      ignore_resolve_error=True)
-
-        with self._action_recorder(action):
+        # On delete we can't rely on re-resolving the properties
+        # so use the stored property values instead
+        with self.frozen_properties(), self._action_recorder(action):
             if self.abandon_in_progress:
                 deletion_policy = self.t.RETAIN
             else:
