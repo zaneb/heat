@@ -1014,13 +1014,11 @@ class ResourceTest(common.HeatTestCase):
                                             {'Food': 'abc'})
         res = generic_rsrc.ResourceWithProps(rname, tmpl, self.stack)
 
-        estr = ('StackValidationFailed: resources.test_resource: '
-                'Property error: test_resource.Properties: '
+        estr = ('Property error: Resources.test_resource.Properties: '
                 'Unknown Property Food')
-        create = scheduler.TaskRunner(res.create)
-        err = self.assertRaises(exception.ResourceFailure, create)
+        err = self.assertRaises(exception.StackValidationFailed,
+                                res.validate_template)
         self.assertIn(estr, six.text_type(err))
-        self.assertEqual((res.CREATE, res.FAILED), res.state)
 
     def test_create_fail_metadata_parse_error(self):
         rname = 'test_resource'
@@ -1355,23 +1353,6 @@ class ResourceTest(common.HeatTestCase):
         utmpl = rsrc_defn.ResourceDefinition('test_resource',
                                              'GenericResourceType',
                                              {})
-
-        updater = scheduler.TaskRunner(res.update, utmpl)
-        self.assertRaises(exception.ResourceFailure, updater)
-        self.assertEqual((res.UPDATE, res.FAILED), res.state)
-
-    def test_update_fail_prop_typo(self):
-        tmpl = rsrc_defn.ResourceDefinition('test_resource',
-                                            'GenericResourceType',
-                                            {'Foo': 'abc'})
-        res = generic_rsrc.ResourceWithProps('test_resource', tmpl, self.stack)
-        res.update_allowed_properties = ('Foo',)
-        scheduler.TaskRunner(res.create)()
-        self.assertEqual((res.CREATE, res.COMPLETE), res.state)
-
-        utmpl = rsrc_defn.ResourceDefinition('test_resource',
-                                             'GenericResourceType',
-                                             {'Food': 'xyz'})
 
         updater = scheduler.TaskRunner(res.update, utmpl)
         self.assertRaises(exception.ResourceFailure, updater)

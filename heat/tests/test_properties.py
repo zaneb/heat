@@ -1667,12 +1667,14 @@ class PropertiesValidationTest(common.HeatTestCase):
     def test_missing_unimplemented(self):
         schema = {'foo': {'Type': 'String', 'Implemented': False}}
         props = properties.Properties(schema, {})
+        self.assertIsNone(props.validate_template())
         self.assertIsNone(props.validate())
 
     def test_present_unimplemented(self):
         schema = {'foo': {'Type': 'String', 'Implemented': False}}
         props = properties.Properties(schema, {'foo': 'bar'})
-        self.assertRaises(exception.StackValidationFailed, props.validate)
+        self.assertRaises(exception.StackValidationFailed,
+                          props.validate_template)
 
     def test_missing(self):
         schema = {'foo': {'Type': 'String'}}
@@ -1682,7 +1684,8 @@ class PropertiesValidationTest(common.HeatTestCase):
     def test_unknown_typo(self):
         schema = {'foo': {'Type': 'String'}}
         props = properties.Properties(schema, {'food': 42})
-        self.assertRaises(exception.StackValidationFailed, props.validate)
+        self.assertRaises(exception.StackValidationFailed,
+                          props.validate_template)
 
     def test_list_instead_string(self):
         schema = {'foo': {'Type': 'String'}}

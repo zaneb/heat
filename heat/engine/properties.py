@@ -12,6 +12,7 @@
 #    under the License.
 
 import collections
+import contextlib
 
 from oslo_serialization import jsonutils
 import six
@@ -292,6 +293,7 @@ class Property(object):
                                     parent_name=self.path,
                                     translation=translation)
             if validate:
+                properties.validate_template()
                 properties.validate()
 
             return ((k, properties[k]) for k in keys)
@@ -405,48 +407,60 @@ class Properties(collections.Mapping):
                         in params_snippet.items())
         return {}
 
-    def validate(self, with_value=True):
-        try:
+    def _is_removed_by_translation(self, prop):
+        return (self.translation.is_deleted(prop.path) or
+                self.translation.is_replaced(prop.path))
+
+    def validate_template(self):
+        """Validate property keys."""
+        with self._handle_validation_error():
             for key in self.data:
                 if key not in self.props:
                     msg = _("Unknown Property %s") % key
                     raise exception.StackValidationFailed(message=msg)
 
             for (key, prop) in self.props.items():
-                if (self.translation.is_deleted(prop.path) or
-                        self.translation.is_replaced(prop.path)):
+                if self._is_removed_by_translation(prop):
                     continue
-                if with_value:
-                    try:
-                        self._get_property_value(key, validate=True)
-                    except exception.StackValidationFailed as ex:
-                        path = [key]
-                        path.extend(ex.path)
-                        raise exception.StackValidationFailed(
-                            path=path, message=ex.error_message)
-                    except ValueError as e:
-                        if prop.required() and key not in self.data:
-                            path = []
-                        else:
-                            path = [key]
-                        raise exception.StackValidationFailed(
-                            path=path, message=six.text_type(e))
 
-                # are there unimplemented Properties
                 if not prop.implemented() and key in self.data:
                     msg = _("Property %s not implemented yet") % key
                     raise exception.StackValidationFailed(message=msg)
+
+    def validate(self):
+        """Validate property values."""
+        with self._handle_validation_error():
+            for (key, prop) in self.props.items():
+                if self._is_removed_by_translation(prop):
+                    continue
+
+                try:
+                    self._get_property_value(key, validate=True)
+                except exception.StackValidationFailed as ex:
+                    path = [key]
+                    path.extend(ex.path)
+                    raise exception.StackValidationFailed(
+                        path=path, message=ex.error_message)
+                except ValueError as e:
+                    if prop.required() and key not in self.data:
+                        path = []
+                    else:
+                        path = [key]
+                    raise exception.StackValidationFailed(
+                        path=path, message=six.text_type(e))
+
+    @contextlib.contextmanager
+    def _handle_validation_error(self):
+        """Context manager to set path on StackValidationFailed errors."""
+        try:
+            yield
         except exception.StackValidationFailed as ex:
-            # NOTE(prazumovsky): should reraise exception for adding specific
-            # error name and error_prefix to path for correct error message
-            # building.
-            path = self.error_prefix
+            path = list(self.error_prefix)
             path.extend(ex.path)
-            raise exception.StackValidationFailed(
-                error=ex.error or 'Property error',
-                path=path,
-                message=ex.error_message
-            )
+            error = ex.error or 'Property error'
+            raise exception.StackValidationFailed(error=error,
+                                                  path=path,
+                                                  message=ex.error_message)
 
     def _find_deps_any_in_init(self, unresolved_value):
         deps = function.dependencies(unresolved_value)

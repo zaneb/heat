@@ -102,6 +102,7 @@ class IOConfig(object):
     def __init__(self, **config):
         self._props = properties.Properties(self.schema, config)
         try:
+            self._props.validate_template()
             self._props.validate()
         except exception.StackValidationFailed as exc:
             raise ValueError(six.text_type(exc))

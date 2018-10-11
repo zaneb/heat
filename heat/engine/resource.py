@@ -1905,8 +1905,11 @@ class Resource(status.ResourceStatus):
         try:
             self.t.validate()
             self.validate_deletion_policy(self.t.deletion_policy())
-            self.update_policy.validate(with_value=self.stack.strict_validate)
-            self.properties.validate(with_value=self.stack.strict_validate)
+            self.update_policy.validate_template()
+            self.properties.validate_template()
+            if self.stack.strict_validate:
+                self.update_policy.validate()
+                self.properties.validate()
         except exception.StackValidationFailed as ex:
             path = [self.stack.t.RESOURCES, self.t.name]
             if ex.path:
