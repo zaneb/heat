@@ -1013,6 +1013,7 @@ class ValidateTest(common.HeatTestCase):
     def test_validate_volumeattach_valid(self):
         t = template_format.parse(test_template_volumeattach % 'vdq')
         stack = parser.Stack(self.ctx, 'test_stack', tmpl.Template(t))
+        stack._update_all_resource_data(True, True)
 
         volumeattach = stack['MountPoint']
         self.assertIsNone(volumeattach.validate())
@@ -1020,6 +1021,7 @@ class ValidateTest(common.HeatTestCase):
     def test_validate_volumeattach_invalid(self):
         t = template_format.parse(test_template_volumeattach % 'sda')
         stack = parser.Stack(self.ctx, 'test_stack', tmpl.Template(t))
+        stack._update_all_resource_data(True, True)
 
         volumeattach = stack['MountPoint']
         self.assertRaises(exception.StackValidationFailed,
@@ -1534,6 +1536,7 @@ class ValidateTest(common.HeatTestCase):
         params = {'KeyName': 'not_registered'}
         template = tmpl.Template(t, env=environment.Environment(params))
         stack = parser.Stack(self.ctx, 'test_stack', template)
+        stack._update_all_resource_data(True, True)
 
         self.stub_FlavorConstraint_validate()
         self.stub_ImageConstraint_validate()
@@ -1548,6 +1551,7 @@ class ValidateTest(common.HeatTestCase):
                                      {'KeyName': 'test'}))
 
         stack = parser.Stack(self.ctx, 'test_stack', template)
+        stack._update_all_resource_data(True, True)
 
         self._mock_get_image_id_fail(exception.EntityNotFound(
                                      entity='Image',
@@ -1565,6 +1569,7 @@ class ValidateTest(common.HeatTestCase):
                                      {'KeyName': 'test'}))
 
         stack = parser.Stack(self.ctx, 'test_stack', template)
+        stack._update_all_resource_data(True, True)
 
         self._mock_get_image_id_fail(exception.PhysicalResourceNameAmbiguity(
                                      name='image_name'))
@@ -1583,6 +1588,7 @@ class ValidateTest(common.HeatTestCase):
                                  env=environment.Environment(
                                      {'KeyName': 'test'}))
         stack = parser.Stack(self.ctx, 'test_stack', template)
+        stack._update_all_resource_data(True, True)
 
         self._mock_get_image_id_success('image_id')
 
@@ -1598,6 +1604,7 @@ class ValidateTest(common.HeatTestCase):
         template = tmpl.Template(
             t, env=environment.Environment({'KeyName': 'test'}))
         stack = parser.Stack(self.ctx, 'test_stack', template)
+        stack._update_all_resource_data(True, True)
 
         self._mock_get_image_id_success('image_id')
 

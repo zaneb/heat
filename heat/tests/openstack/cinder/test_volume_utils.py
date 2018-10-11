@@ -84,6 +84,7 @@ class VolumeTestCase(common.HeatTestCase):
         if isinstance(rsrc, os_vol.CinderVolume):
             self.patchobject(rsrc, '_store_config_default_properties')
 
+        stack._update_all_resource_data(True, True)
         self.assertIsNone(rsrc.validate())
         scheduler.TaskRunner(rsrc.create)()
         self.assertEqual((rsrc.CREATE, rsrc.COMPLETE), rsrc.state)

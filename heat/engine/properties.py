@@ -462,10 +462,10 @@ class Properties(collections.Mapping):
                                                   path=path,
                                                   message=ex.error_message)
 
-    def _find_deps_any_in_init(self, unresolved_value):
+    @staticmethod
+    def _val_refs_new_rsrc(unresolved_value):
         deps = function.dependencies(unresolved_value)
-        if any(res.action == res.INIT for res in deps):
-            return True
+        return any(res.action == res.INIT for res in deps)
 
     def get_user_value(self, key, validate=False):
         if key not in self:
@@ -478,16 +478,19 @@ class Properties(collections.Mapping):
         if key in self.data:
             try:
                 unresolved_value = self.data[key]
-                if validate:
-                    if self._find_deps_any_in_init(unresolved_value):
-                        validate = False
-
                 value = self.resolve(unresolved_value)
 
                 if self.translation.has_translation(prop.path):
                     value = self.translation.translate(prop.path,
                                                        value,
                                                        self.data)
+
+                # Skip pre-flight validation if the value resolves to None, as
+                # this may be due to a resource attribute that doesn't return a
+                # placeholder.
+                validate = (validate and
+                            not (value is None and
+                                 self._val_refs_new_rsrc(unresolved_value)))
 
                 return prop.get_value(value, validate,
                                       translation=self.translation)

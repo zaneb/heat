@@ -1212,7 +1212,7 @@ class PropertiesTest(common.HeatTestCase):
             return None
 
         self.patchobject(properties.Properties,
-                         '_find_deps_any_in_init').return_value = True
+                         '_val_refs_new_rsrc').return_value = True
 
         props = properties.Properties(schema,
                                       {'foo': 'get_attr: [db, value]'},
