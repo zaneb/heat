@@ -1905,10 +1905,8 @@ class Resource(status.ResourceStatus):
         try:
             self.t.validate()
             self.validate_deletion_policy(self.t.deletion_policy())
-            self.t.update_policy(self.update_policy_schema,
-                                 self.context).validate()
-            validate = self.properties.validate(
-                with_value=self.stack.strict_validate)
+            self.update_policy.validate(with_value=self.stack.strict_validate)
+            self.properties.validate(with_value=self.stack.strict_validate)
         except exception.StackValidationFailed as ex:
             path = [self.stack.t.RESOURCES, self.t.name]
             if ex.path:
@@ -1918,7 +1916,6 @@ class Resource(status.ResourceStatus):
                 error=ex.error,
                 path=path,
                 message=ex.error_message)
-        return validate
 
     @classmethod
     def validate_deletion_policy(cls, policy):

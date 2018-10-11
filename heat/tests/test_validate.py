@@ -1386,6 +1386,27 @@ class ValidateTest(common.HeatTestCase):
                     'Environment': self.empty_environment}
         self.assertEqual(expected, res)
 
+    def test_validate_template_with_update_policy_from_param(self):
+        hot_tpl = template_format.parse('''
+        heat_template_version: 2013-05-23
+        parameters:
+          update_policy_param:
+            type: number
+        resources:
+          resource1:
+            type: OS::Heat::ResourceGroup
+            properties:
+              count: 1
+              resource_def:
+                type: OS::Heat::None
+            update_policy:
+              batch_create:
+                max_batch_size: {get_param: update_policy_param}
+        ''')
+
+        res = dict(self.engine.validate_template(self.ctx, hot_tpl, {}))
+        self.assertNotIn('Error', res)
+
     def test_validate_template_with_invalid_resource_type(self):
         hot_tpl = template_format.parse('''
         heat_template_version: 2013-05-23
