@@ -1202,7 +1202,7 @@ class CinderVolumeTest(vt_base.VolumeTestCase):
             stack)
         self.assertIsNone(rsrc.handle_delete_snapshot(mock_vs))
 
-    def test_vaildate_deletion_policy(self):
+    def test_validate_deletion_policy(self):
         cfg.CONF.set_override('backups_enabled', False, group='volumes')
         self.stack_name = 'test_volume_validate_deletion_policy'
         self.t['resources']['volume']['deletion_policy'] = 'Snapshot'
@@ -1211,7 +1211,7 @@ class CinderVolumeTest(vt_base.VolumeTestCase):
         self.assertRaisesRegex(
             exception.StackValidationFailed,
             'volume backup service is not enabled',
-            rsrc.validate)
+            rsrc.validate_template)
 
     def test_volume_get_live_state(self):
         tmpl = """

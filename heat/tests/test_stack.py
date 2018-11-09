@@ -2042,7 +2042,7 @@ class StackTest(common.HeatTestCase):
         self.assertIn("The Parameter (aparam) was not provided",
                       six.text_type(ex))
 
-        self.assertIsNone(self.stack.validate(validate_res_tmpl_only=True))
+        self.assertIsNone(self.stack.validate_template())
 
     def test_nodisable_validate_tmpl_err(self):
         tmpl = template_format.parse("""
@@ -2071,8 +2071,7 @@ class StackTest(common.HeatTestCase):
             six.text_type(ex))
 
         ex = self.assertRaises(exception.InvalidTemplateReference,
-                               self.stack.validate,
-                               validate_res_tmpl_only=True)
+                               self.stack.validate_template)
         self.assertIn(
             "The specified reference \"noexist\" (in AResource) is incorrect",
             six.text_type(ex))

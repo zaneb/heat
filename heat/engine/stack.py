@@ -832,16 +832,20 @@ class Stack(collections.Mapping):
         return handler and handler(resource_name)
 
     @profiler.trace('Stack.validate', hide_args=False)
-    def validate(self, ignorable_errors=None, validate_res_tmpl_only=False):
-        """Validates the stack."""
-        # TODO(sdake) Should return line number of invalid reference
+    def validate(self, ignorable_errors=None):
+        self.validate_template(ignorable_errors)
+        self.validate_pre_flight()
+
+    def validate_template(self, ignorable_errors=None):
+        """Validates the stack template."""
+
+        LOG.debug('Validating stack template')
 
         # validate overall template (top-level structure)
         self.t.validate()
 
         # Validate parameters
-        self.parameters.validate(context=self.context,
-                                 validate_value=self.strict_validate)
+        self.parameters.validate(context=self.context, validate_value=False)
 
         # Validate Parameter Groups
         parameter_groups = param_groups.ParameterGroups(self.t)
@@ -876,43 +880,13 @@ class Stack(collections.Mapping):
 
         self._update_all_resource_data(for_resources=True, for_outputs=True)
 
-        if self.strict_validate:
-            iter_rsc = self.dependencies
-        else:
-            iter_rsc = self._explicit_dependencies()
+        def validate_res_template(res):
+            if res.external_id is None:
+                res.validate_template()
 
-        unique_defns = set(res.t for res in six.itervalues(resources))
-        unique_defn_names = set(defn.name for defn in unique_defns)
-
-        for res in iter_rsc:
-            # Don't validate identical definitions multiple times
-            if res.name not in unique_defn_names:
-                continue
-            result = None
-            try:
-                if not validate_res_tmpl_only:
-                    if res.external_id is not None:
-                        res.validate_external()
-                        continue
-                    result = res.validate()
-                elif res.external_id is None:
-                    result = res.validate_template()
-            except exception.HeatException as ex:
-                LOG.debug('%s', ex)
-                if ignorable_errors and ex.error_code in ignorable_errors:
-                    result = None
-                else:
-                    raise
-            except AssertionError:
-                raise
-            except Exception as ex:
-                LOG.info("Exception in stack validation",
-                         exc_info=True)
-                raise exception.StackValidationFailed(error=ex,
-                                                      resource=res)
-            if result:
-                raise exception.StackValidationFailed(message=result)
-            eventlet.sleep(0)
+        self._validate_unique_resources(validate_res_template,
+                                        self._explicit_dependencies(),
+                                        ignorable_errors)
 
         for op_name, output in six.iteritems(self.outputs):
             try:
@@ -925,6 +899,55 @@ class Stack(collections.Mapping):
                     error=ex.error,
                     path=path,
                     message=ex.error_message)
+
+    def validate_pre_flight(self):
+        """Performs pre-flight validation of the stack.
+
+        This stage of validation occurs after the template has been accepted
+        and the stack create or update is about to commence.
+        """
+        LOG.debug('Validating stack pre-flight')
+
+        if self.strict_validate:
+            self.parameters.validate(context=self.context, validate_value=True)
+
+        def validate_res(res):
+            if res.external_id is not None:
+                res.validate_external()
+            else:
+                return res.validate()
+
+        self._validate_unique_resources(validate_res, self.dependencies)
+
+    def _validate_unique_resources(self, validate_func, resource_graph,
+                                   ignorable_errors=None):
+        unique_defns = set(res.t for res in six.itervalues(self.resources))
+        unique_defn_names = set(defn.name for defn in unique_defns)
+
+        for res in resource_graph:
+            # Don't validate identical definitions multiple times
+            if res.name not in unique_defn_names:
+                continue
+
+            try:
+                result = validate_func(res)
+            except exception.HeatException as ex:
+                LOG.debug('%s', ex)
+                if not (ignorable_errors and
+                        ex.error_code in ignorable_errors):
+                    raise
+            except AssertionError:
+                raise
+            except Exception as ex:
+                LOG.info("Exception in stack validation",
+                         exc_info=True)
+                raise exception.StackValidationFailed(error=ex,
+                                                      resource=res)
+            else:
+                if result:
+                    raise exception.StackValidationFailed(message=result,
+                                                          resource=res)
+            eventlet.sleep(0)
 
     def requires_deferred_auth(self):
         """Determine whether to perform API requests with deferred auth.

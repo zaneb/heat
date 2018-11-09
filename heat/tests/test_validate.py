@@ -2015,13 +2015,12 @@ parameter_groups:
         template = tmpl.Template(t)
         stack = parser.Stack(self.ctx, 'test_stack', template)
 
-        self.assertIsNone(stack.validate(validate_res_tmpl_only=True))
+        self.assertIsNone(stack.validate_template())
 
         with mock.patch(
-            'heat.engine.resources.server_base.BaseServer._show_resource',
-            return_value={'id': 'foobar'}
-        ):
-            self.assertIsNone(stack.validate(validate_res_tmpl_only=False))
+                'heat.engine.resources.server_base.BaseServer._show_resource',
+                return_value={'id': 'foobar'}):
+            self.assertIsNone(stack.validate())
 
     def test_validate_circular_reference(self):
         t = template_format.parse(test_template_circular_reference)

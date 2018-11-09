@@ -104,8 +104,6 @@ class Delay(resource.Resource):
 
     def validate(self):
         result = super(Delay, self).validate()
-        if not self.stack.strict_validate:
-            return result
 
         min_wait_secs, max_jitter_secs = self._delay_parameters()
         max_wait = min_wait_secs + max_jitter_secs

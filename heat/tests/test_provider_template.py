@@ -797,7 +797,7 @@ class ProviderTemplateTest(common.HeatTestCase):
         # fails gracefully if the template file specified is inaccessible
         # we should be able to create the TemplateResource object, but
         # validation should fail, when the second attempt to access it is
-        # made in validate()
+        # made in validate_template()
         g_env = resources.global_env()
         test_templ_name = 'file:///etc/heatr/frodo.yaml'
         g_env.load({'resource_registry':
@@ -815,7 +815,8 @@ class ProviderTemplateTest(common.HeatTestCase):
         temp_res = template_resource.TemplateResource('test_t_res',
                                                       definition,
                                                       stack)
-        self.assertRaises(exception.StackValidationFailed, temp_res.validate)
+        self.assertRaises(exception.StackValidationFailed,
+                          temp_res.validate_template)
         mock_get.assert_called_once_with(test_templ_name,
                                          allowed_schemes=('http', 'https',
                                                           'file',))
@@ -825,7 +826,7 @@ class ProviderTemplateTest(common.HeatTestCase):
         # fails gracefully if the template file specified is inaccessible
         # we should be able to create the TemplateResource object, but
         # validation should fail, when the second attempt to access it is
-        # made in validate()
+        # made in validate_template()
         env = environment.Environment()
         test_templ_name = 'http://heatr/noexist.yaml'
         env.load({'resource_registry':
@@ -843,7 +844,8 @@ class ProviderTemplateTest(common.HeatTestCase):
         temp_res = template_resource.TemplateResource('test_t_res',
                                                       definition,
                                                       stack)
-        self.assertRaises(exception.StackValidationFailed, temp_res.validate)
+        self.assertRaises(exception.StackValidationFailed,
+                          temp_res.validate_template)
         mock_get.assert_called_once_with(test_templ_name,
                                          allowed_schemes=('http', 'https',))
 
@@ -852,7 +854,7 @@ class ProviderTemplateTest(common.HeatTestCase):
         # fails gracefully if the template file is the wrong extension
         # we should be able to create the TemplateResource object, but
         # validation should fail, when the second attempt to access it is
-        # made in validate()
+        # made in validate_template()
         env = environment.Environment()
         test_templ_name = 'http://heatr/letter_to_granny.docx'
         env.load({'resource_registry':
@@ -866,7 +868,8 @@ class ProviderTemplateTest(common.HeatTestCase):
         temp_res = template_resource.TemplateResource('test_t_res',
                                                       definition,
                                                       stack)
-        self.assertRaises(exception.StackValidationFailed, temp_res.validate)
+        self.assertRaises(exception.StackValidationFailed,
+                          temp_res.validate_template)
 
     def test_incorrect_template_provided_with_url(self):
         wrong_template = '''

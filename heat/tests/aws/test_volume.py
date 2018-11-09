@@ -719,4 +719,4 @@ class VolumeTest(vt_base.VolumeTestCase):
         self.assertRaisesRegex(
             exception.StackValidationFailed,
             'volume backup service is not enabled',
-            rsrc.validate)
+            rsrc.validate_template)

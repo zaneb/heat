@@ -1278,8 +1278,7 @@ class EngineService(service.ServiceBase):
         stack = parser.Stack(cnxt, stack_name, tmpl,
                              strict_validate=False)
         try:
-            stack.validate(ignorable_errors=ignorable_errors,
-                           validate_res_tmpl_only=True)
+            stack.validate_template(ignorable_errors=ignorable_errors)
         except exception.StackValidationFailed as ex:
             return {'Error': six.text_type(ex)}
 

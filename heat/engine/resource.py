@@ -1888,7 +1888,11 @@ class Resource(status.ResourceStatus):
         validation logic specific to the resource implementation.
         """
         LOG.info('Validating %s', self)
-        return self.validate_template()
+
+        if self.stack.strict_validate:
+            with self._handle_validation_error():
+                self.update_policy.validate()
+                self.properties.validate()
 
     def validate_template(self):
         """Validate structural/syntax aspects of the resource definition.
@@ -1902,23 +1906,24 @@ class Resource(status.ResourceStatus):
             self.stack.context,
             self.t.resource_type
         )
-        try:
+        with self._handle_validation_error():
             self.t.validate()
             self.validate_deletion_policy(self.t.deletion_policy())
             self.update_policy.validate_template()
             self.properties.validate_template()
-            if self.stack.strict_validate:
-                self.update_policy.validate()
-                self.properties.validate()
+
+    @contextlib.contextmanager
+    def _handle_validation_error(self):
+        """Context manager to set path on StackValidationFailed errors."""
+        try:
+            yield
         except exception.StackValidationFailed as ex:
             path = [self.stack.t.RESOURCES, self.t.name]
             if ex.path:
                 path.append(self.stack.t.get_section_name(ex.path[0]))
                 path.extend(ex.path[1:])
-            raise exception.StackValidationFailed(
-                error=ex.error,
-                path=path,
-                message=ex.error_message)
+            raise exception.StackValidationFailed(error=ex.error, path=path,
+                                                  message=ex.error_message)
 
     @classmethod
     def validate_deletion_policy(cls, policy):
